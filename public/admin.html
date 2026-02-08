@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R7 Admin — Analytics Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0b;color:#f5f5f5;font-family:'SF Pro Display',-apple-system,sans-serif;padding:20px;max-width:900px;margin:0 auto}
+h1{font-size:28px;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,#fff,#a3a3a3);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle{color:#737373;font-size:14px;margin-bottom:24px}
+.controls{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+.controls button{padding:8px 16px;border-radius:8px;border:1px solid #333;background:#161618;color:#e5e5e5;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.controls button.active{background:#1a1a2e;border-color:#6366f1;color:#a5b4fc}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.card{background:#161618;border:1px solid #262626;border-radius:14px;padding:20px}
+.card .label{font-size:11px;color:#737373;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.card .value{font-size:28px;font-weight:800;letter-spacing:-1px}
+.card .sub{font-size:12px;color:#525252;margin-top:4px}
+.section{background:#161618;border:1px solid #262626;border-radius:14px;padding:20px;margin-bottom:16px}
+.section h3{font-size:16px;font-weight:700;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:#737373;font-weight:600;padding:8px 6px;border-bottom:1px solid #262626;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+td{padding:8px 6px;border-bottom:1px solid #1a1a1c;color:#d4d4d4}
+.bar{height:6px;background:#262626;border-radius:3px;overflow:hidden;min-width:80px}
+.bar-fill{height:100%;border-radius:3px}
+.tag{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:600;display:inline-block}
+.green{background:#052e16;color:#4ade80;border:1px solid #166534}
+.red{background:#2a0a0a;color:#f87171;border:1px solid #7f1d1d}
+.yellow{background:#1a1500;color:#eab308;border:1px solid #854d0e}
+.loading{text-align:center;color:#525252;padding:40px;font-size:14px}
+.refresh-btn{position:fixed;bottom:20px;right:20px;width:48px;height:48px;border-radius:50%;background:#f5f5f5;color:#0a0a0b;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;box-shadow:0 4px 20px rgba(255,255,255,.15)}
+</style>
+</head>
+<body>
+<h1>⚡ R7 Analytics</h1>
+<p class="subtitle">Game performance & player insights</p>
+
+<div class="controls">
+  <button class="active" onclick="loadStats(1)" id="btn-1d">Today</button>
+  <button onclick="loadStats(7)" id="btn-7d">7 Days</button>
+  <button onclick="loadStats(30)" id="btn-30d">30 Days</button>
+  <button onclick="loadStats(90)" id="btn-90d">All Time</button>
+  <button onclick="loadSurveys()" id="btn-survey" style="margin-left:auto;background:#1a1a2e;border-color:#312e81;color:#a5b4fc">📋 Survey Results</button>
+</div>
+
+<div id="content"><div class="loading">Loading...</div></div>
+<div id="survey-content" style="display:none"></div>
+
+<button class="refresh-btn" onclick="location.reload()">↻</button>
+
+<script>
+let currentDays = 7;
+
+async function loadStats(days) {
+  currentDays = days;
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  document.getElementById(`btn-${days}d`).classList.add('active');
+  document.getElementById('survey-content').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+
+  try {
+    const res = await fetch(`/api/admin/stats?days=${days}`);
+    const d = await res.json();
+    renderStats(d);
+  } catch (e) {
+    document.getElementById('content').innerHTML = '<div class="loading">Failed to load. Server running?</div>';
+  }
+}
+
+function renderStats(d) {
+  const c = document.getElementById('content');
+  const convRate = d.conversionRate;
+  const compRate = d.completionRate;
+
+  c.innerHTML = `
+    <!-- Tier 1: Survival -->
+    <div class="grid">
+      <div class="card">
+        <div class="label">Total Games</div>
+        <div class="value">${d.gamesCompleted}</div>
+        <div class="sub">${d.botGames} bot · ${d.multiGames} multiplayer</div>
+      </div>
+      <div class="card">
+        <div class="label">Unique Players</div>
+        <div class="value">${d.uniquePlayers}</div>
+      </div>
+      <div class="card">
+        <div class="label">Room → Game %</div>
+        <div class="value">${convRate}%</div>
+        <div class="sub">${d.roomsCreated} created → ${d.gamesStarted} started</div>
+      </div>
+      <div class="card">
+        <div class="label">Completion Rate</div>
+        <div class="value" style="color:${compRate>80?'#4ade80':compRate>50?'#eab308':'#ef4444'}">${compRate}%</div>
+      </div>
+      <div class="card">
+        <div class="label">Rematches</div>
+        <div class="value">${d.rematches}</div>
+      </div>
+      <div class="card">
+        <div class="label">Bot Timeouts</div>
+        <div class="value">${d.timeouts}</div>
+        <div class="sub">Waited → fell back to bot</div>
+      </div>
+    </div>
+
+    <!-- Games per Day -->
+    ${Object.keys(d.gamesByDay).length > 0 ? `
+    <div class="section">
+      <h3>📊 Games Per Day</h3>
+      <table>
+        <tr><th>Date</th><th>Games</th><th></th></tr>
+        ${Object.entries(d.gamesByDay).sort((a,b) => b[0].localeCompare(a[0])).map(([day, count]) => {
+          const max = Math.max(...Object.values(d.gamesByDay));
+          const pct = (count / max) * 100;
+          return `<tr><td>${day}</td><td>${count}</td><td><div class="bar"><div class="bar-fill" style="width:${pct}%;background:#6366f1"></div></div></td></tr>`;
+        }).join('')}
+      </table>
+    </div>` : ''}
+
+    <!-- Topic Popularity -->
+    ${d.topicPopularity.length > 0 ? `
+    <div class="section">
+      <h3>🔥 Topic Popularity</h3>
+      <table>
+        <tr><th>Topic</th><th>Picks</th><th></th></tr>
+        ${d.topicPopularity.map(([topic, count]) => {
+          const max = d.topicPopularity[0][1];
+          const pct = (count / max) * 100;
+          return `<tr><td>${topic}</td><td>${count}</td><td><div class="bar"><div class="bar-fill" style="width:${pct}%;background:#22c55e"></div></div></td></tr>`;
+        }).join('')}
+      </table>
+    </div>` : ''}
+
+    <!-- Too Easy Questions -->
+    ${d.tooEasyQuestions.length > 0 ? `
+    <div class="section">
+      <h3>😴 Too Easy (>90% accuracy)</h3>
+      <table>
+        <tr><th>Question</th><th>Accuracy</th><th>Avg Time</th></tr>
+        ${d.tooEasyQuestions.map(q => `
+          <tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.question}</td>
+          <td><span class="tag green">${q.accuracy}%</span></td>
+          <td>${q.avgTime}s</td></tr>
+        `).join('')}
+      </table>
+    </div>` : ''}
+
+    <!-- Too Hard Questions -->
+    ${d.tooHardQuestions.length > 0 ? `
+    <div class="section">
+      <h3>💀 Too Hard (<30% accuracy)</h3>
+      <table>
+        <tr><th>Question</th><th>Accuracy</th><th>Avg Time</th></tr>
+        ${d.tooHardQuestions.map(q => `
+          <tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.question}</td>
+          <td><span class="tag red">${q.accuracy}%</span></td>
+          <td>${q.avgTime}s</td></tr>
+        `).join('')}
+      </table>
+    </div>` : ''}
+
+    <!-- Raw Event Counts -->
+    <div class="section">
+      <h3>📈 All Events</h3>
+      <table>
+        <tr><th>Event</th><th>Count</th></tr>
+        ${Object.entries(d.eventCounts).sort((a,b) => b[1] - a[1]).map(([type, count]) => `
+          <tr><td>${type}</td><td>${count}</td></tr>
+        `).join('')}
+      </table>
+    </div>
+  `;
+}
+
+async function loadSurveys() {
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-survey').classList.add('active');
+  document.getElementById('content').style.display = 'none';
+  const sc = document.getElementById('survey-content');
+  sc.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/admin/surveys');
+    const d = await res.json();
+
+    sc.innerHTML = `
+      <div class="grid">
+        <div class="card">
+          <div class="label">Total Responses</div>
+          <div class="value">${d.totalResponses}</div>
+        </div>
+      </div>
+
+      ${d.topicRanking.length > 0 ? `
+      <div class="section">
+        <h3>🗳️ Topic Demand (Weighted by Priority)</h3>
+        <p style="font-size:12px;color:#525252;margin-bottom:12px">#1 pick = 10 pts, #2 = 9 pts, etc.</p>
+        <table>
+          <tr><th>Topic</th><th>Score</th><th></th></tr>
+          ${d.topicRanking.map(([topic, score]) => {
+            const max = d.topicRanking[0][1];
+            const pct = (score / max) * 100;
+            return `<tr><td>${topic}</td><td>${score}</td><td><div class="bar"><div class="bar-fill" style="width:${pct}%;background:#818cf8"></div></div></td></tr>`;
+          }).join('')}
+        </table>
+      </div>` : '<div class="section"><h3>No survey responses yet</h3></div>'}
+
+      ${d.freeTextSuggestions.length > 0 ? `
+      <div class="section">
+        <h3>💬 Free Text Suggestions</h3>
+        ${d.freeTextSuggestions.map(s => `
+          <div style="padding:10px;background:#0a0a0b;border-radius:8px;border:1px solid #1e1e20;margin-bottom:8px">
+            <div style="font-size:13px;color:#d4d4d4;margin-bottom:4px">"${s.text}"</div>
+            <div style="font-size:11px;color:#525252">— ${s.player} · ${s.date?.split('T')[0] || ''}</div>
+          </div>
+        `).join('')}
+      </div>` : ''}
+    `;
+  } catch (e) {
+    sc.innerHTML = '<div class="loading">Failed to load surveys</div>';
+  }
+}
+
+// Load 7-day stats on page load
+loadStats(7);
+</script>
+</body>
+</html>

@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>R7 — 7 Rounds, 1 Minute, 1 Winner</title>
+<meta name="description" content="Fast-paced 1v1 trivia battles. Pick a topic. Challenge a friend. 7 rounds. Speed matters.">
+<meta property="og:title" content="⚡ R7 — I challenge you to a trivia battle!">
+<meta property="og:description" content="7 Rounds. 1 Minute. 1 Winner. Beat me if you can!">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:#0a0a0b;color:#f5f5f5;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100dvh;display:flex;justify-content:center}
+#app{width:100%;max-width:480px;min-height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.screen{flex:1;display:none;flex-direction:column;padding:16px;animation:fadeIn .4s ease}
+.screen.active{display:flex}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;transition:transform .1s}
+button:active{transform:scale(.97)}
+.btn-primary{width:100%;padding:18px 32px;font-size:17px;font-weight:700;border-radius:14px;background:#f5f5f5;color:#0a0a0b;box-shadow:0 4px 20px rgba(255,255,255,.1)}
+.btn-secondary{padding:16px;font-size:15px;font-weight:700;border-radius:12px;background:#161618;color:#e5e5e5;border:1px solid #333}
+.name-input{width:100%;padding:14px 16px;font-size:16px;font-weight:600;background:#161618;border:1px solid #333;border-radius:12px;color:#f5f5f5;outline:none;font-family:inherit;text-align:center}
+.name-input:focus{border-color:#6366f1}
+.name-input::placeholder{color:#525252}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes countPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.1);opacity:.8}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.topic-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow-y:auto;padding-bottom:20px}
+.topic-card{background:#161618;border:1px solid #262626;border-radius:14px;padding:20px 14px;text-align:left}
+.topic-card .icon{font-size:28px;display:block;margin-bottom:8px}
+.topic-card .name{font-size:14px;font-weight:600;color:#e5e5e5;line-height:1.3;display:block}
+.topic-card .count{font-size:11px;color:#525252;margin-top:4px;display:block}
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;transition:all .3s ease}
+.option-tile{background:#161618;border:1px solid #262626;border-radius:14px;padding:18px 10px;font-size:15px;font-weight:600;color:#e5e5e5;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:76px;transition:all .15s}
+.option-tile.selected{background:#1a1a2e;border:2px solid #6366f1;color:#c7d2fe}
+.option-tile.correct{background:#052e16;border:1px solid #166534;color:#4ade80}
+.option-tile.wrong{background:#2a0a0a;border:1px solid #7f1d1d;color:#f87171}
+.option-tile.dimmed{opacity:.35}
+.option-label{font-size:12px;font-weight:700;color:#525252;margin-bottom:5px;width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#262626}
+.option-tile.selected .option-label{color:#a5b4fc;background:#312e81}
+.option-tile.correct .option-label{color:#4ade80;background:#166534}
+.timer-bar{width:100%;height:4px;background:#262626;border-radius:2px;margin-bottom:20px;overflow:hidden}
+.timer-fill{height:100%;border-radius:2px;transition:width .1s linear,background-color .3s}
+.diff-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;display:inline-block}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:none;align-items:center;justify-content:center;padding:24px}
+.overlay.show{display:flex}
+.modal{background:#161618;border-radius:20px;padding:28px 24px;max-width:380px;width:100%;border:1px solid #262626;max-height:85dvh;overflow-y:auto}
+/* Bot difficulty cards */
+.diff-card{background:#0f0f11;border:1px solid #262626;border-radius:14px;padding:16px;cursor:pointer;text-align:center;transition:all .15s}
+.diff-card:hover,.diff-card.active{border-color:#6366f1;background:#1a1a2e}
+/* Survey tiles */
+.survey-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0}
+.survey-tile{background:#0f0f11;border:1px solid #262626;border-radius:10px;padding:10px 6px;font-size:12px;font-weight:600;color:#a3a3a3;cursor:pointer;text-align:center;transition:all .15s;line-height:1.3}
+.survey-tile.picked{background:#1a1a2e;border-color:#6366f1;color:#c7d2fe}
+.survey-tile .num{display:none;font-size:10px;color:#818cf8;margin-top:3px}
+.survey-tile.picked .num{display:block}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ═══ HOME ═══ -->
+<div id="screen-home" class="screen active" style="align-items:center;justify-content:center;padding:40px 24px">
+  <div style="width:88px;height:88px;border-radius:22px;background:linear-gradient(135deg,#f5f5f5,#a3a3a3);display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 8px 32px rgba(255,255,255,.08)">
+    <span style="font-size:38px;font-weight:800;color:#0a0a0b;letter-spacing:-2px">R7</span>
+  </div>
+  <h1 style="font-size:42px;font-weight:800;letter-spacing:-1.5px;margin-bottom:8px;background:linear-gradient(135deg,#fff,#a3a3a3);-webkit-background-clip:text;-webkit-text-fill-color:transparent">R7</h1>
+  <p style="font-size:16px;color:#737373;margin-bottom:32px;letter-spacing:3px;text-transform:uppercase;font-weight:500">7 Rounds · 1 Minute · 1 Winner</p>
+  <input type="text" class="name-input" id="player-name" placeholder="Your name" maxlength="20" style="max-width:280px;margin-bottom:24px">
+  <button class="btn-primary" onclick="goToTopics('quick')" style="max-width:320px;margin-bottom:12px">⚡ Quick Match</button>
+  <button class="btn-secondary" onclick="goToTopics('challenge')" style="max-width:320px;width:100%">🤝 Challenge a Friend</button>
+  <div style="display:flex;gap:32px;margin-top:48px;color:#525252;font-size:13px;font-weight:500">
+    <div style="text-align:center"><div id="topic-count" style="font-size:24px;font-weight:800;color:#d4d4d4;margin-bottom:4px">20</div>Topics</div>
+    <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:#d4d4d4;margin-bottom:4px">7</div>Rounds</div>
+    <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:#d4d4d4;margin-bottom:4px">60s</div>Per Match</div>
+  </div>
+</div>
+
+<!-- ═══ TOPICS ═══ -->
+<div id="screen-topics" class="screen" style="padding:20px 16px">
+  <div style="display:flex;align-items:center;margin-bottom:20px;padding:0 4px">
+    <button onclick="showScreen('home')" style="background:none;color:#737373;font-size:15px;padding:8px 0;font-weight:600">← Back</button>
+    <h2 id="topics-title" style="flex:1;text-align:center;font-size:18px;font-weight:700">Pick Your Battle</h2>
+    <div style="width:48px"></div>
+  </div>
+  <div id="mode-badge" style="text-align:center;margin-bottom:16px">
+    <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:#1a1a2e;color:#a5b4fc;border:1px solid #312e81"></span>
+  </div>
+  <div id="topic-list" class="topic-grid"></div>
+</div>
+
+<!-- ═══ BOT DIFFICULTY PICKER ═══ -->
+<div id="overlay-difficulty" class="overlay">
+  <div class="modal">
+    <h3 style="font-size:20px;font-weight:800;text-align:center;margin-bottom:6px">Choose Your Opponent</h3>
+    <p id="diff-topic-label" style="font-size:13px;color:#737373;text-align:center;margin-bottom:20px"></p>
+    <div style="display:flex;flex-direction:column;gap:10px" id="diff-options">
+      <button class="diff-card" onclick="pickDifficulty('rookie')">
+        <div style="font-size:32px;margin-bottom:6px">🐣</div>
+        <div style="font-size:16px;font-weight:700;color:#e5e5e5">The Rookie</div>
+        <div style="font-size:12px;color:#737373;margin-top:2px">Warming up · Gets ~40% right</div>
+      </button>
+      <button class="diff-card" onclick="pickDifficulty('contender')">
+        <div style="font-size:32px;margin-bottom:6px">🥊</div>
+        <div style="font-size:16px;font-weight:700;color:#e5e5e5">The Contender</div>
+        <div style="font-size:12px;color:#737373;margin-top:2px">Solid match · Gets ~65% right</div>
+      </button>
+      <button class="diff-card" onclick="pickDifficulty('beast')">
+        <div style="font-size:32px;margin-bottom:6px">🔥</div>
+        <div style="font-size:16px;font-weight:700;color:#e5e5e5">The Beast</div>
+        <div style="font-size:12px;color:#737373;margin-top:2px">Lightning fast · Gets ~88% right</div>
+      </button>
+    </div>
+    <button onclick="closeDifficulty()" style="background:none;color:#525252;font-size:13px;margin-top:16px;width:100%;text-align:center;font-weight:500">Cancel</button>
+  </div>
+</div>
+
+<!-- ═══ WAITING ROOM ═══ -->
+<div id="screen-waiting" class="screen" style="align-items:center;justify-content:center;padding:40px 24px">
+  <div id="wait-icon" style="font-size:48px;margin-bottom:16px"></div>
+  <h2 id="wait-topic" style="font-size:22px;font-weight:700;margin-bottom:4px"></h2>
+  <p id="wait-room" style="font-size:14px;color:#a3a3a3;margin-bottom:32px;font-weight:600"></p>
+  <button id="share-btn" onclick="shareInvite()" class="btn-secondary" style="width:100%;max-width:300px;margin-bottom:16px">📤 Share Invite Link</button>
+  <div id="wait-timer" style="text-align:center;margin-bottom:12px;display:none">
+    <div style="font-size:12px;color:#525252;font-weight:600;margin-bottom:4px">Waiting for opponent</div>
+    <div id="wait-timer-bar" style="width:200px;height:3px;background:#262626;border-radius:2px;margin:0 auto;overflow:hidden"><div id="wait-timer-fill" style="width:100%;height:100%;background:#525252;border-radius:2px;transition:width .5s linear"></div></div>
+  </div>
+  <div id="player-list" style="width:100%;max-width:300px;background:#161618;border-radius:12px;padding:20px;margin-top:8px;border:1px solid #262626"></div>
+  <div id="timeout-msg" style="display:none;text-align:center;margin-top:20px;animation:fadeIn .4s ease;width:100%;max-width:300px">
+    <p style="font-size:14px;color:#a3a3a3;margin-bottom:16px;line-height:1.5">Looks like your opponent got cold feet 🥶<br><span style="color:#737373">No worries — we found you a worthy challenger</span></p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="diff-card" onclick="fallbackBot('rookie')" style="padding:12px"><span style="font-size:20px">🐣</span> <span style="font-weight:700;color:#e5e5e5">The Rookie</span></button>
+      <button class="diff-card" onclick="fallbackBot('contender')" style="padding:12px"><span style="font-size:20px">🥊</span> <span style="font-weight:700;color:#e5e5e5">The Contender</span></button>
+      <button class="diff-card" onclick="fallbackBot('beast')" style="padding:12px"><span style="font-size:20px">🔥</span> <span style="font-weight:700;color:#e5e5e5">The Beast</span></button>
+    </div>
+  </div>
+  <button id="start-btn" onclick="startGame()" class="btn-primary" style="max-width:300px;margin-top:24px;display:none">Start Battle ⚡</button>
+  <button onclick="leaveRoom()" style="background:none;color:#525252;font-size:13px;margin-top:20px;font-weight:500">Cancel</button>
+</div>
+
+<!-- ═══ RULES POPUP ═══ -->
+<div id="overlay-rules" class="overlay">
+  <div class="modal" style="max-width:340px">
+    <h3 style="font-size:20px;font-weight:800;margin-bottom:20px;text-align:center">⚡ How Scoring Works</h3>
+    <div id="rules-content" style="display:flex;flex-direction:column;gap:14px"></div>
+    <button class="btn-primary" onclick="dismissRules()" style="margin-top:20px">Let's Go! 🚀</button>
+  </div>
+</div>
+
+<!-- ═══ COUNTDOWN ═══ -->
+<div id="screen-countdown" class="screen" style="align-items:center;justify-content:center;padding:40px">
+  <p style="font-size:14px;color:#737373;margin-bottom:16px;font-weight:600;letter-spacing:2px;text-transform:uppercase">Get Ready</p>
+  <div id="countdown-num" style="font-size:120px;font-weight:800;color:#f5f5f5;animation:countPulse 1s ease infinite;line-height:1"></div>
+  <p id="countdown-vs" style="font-size:15px;color:#525252;margin-top:24px"></p>
+</div>
+
+<!-- ═══ PLAYING ═══ -->
+<div id="screen-playing" class="screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 4px">
+    <div><div style="font-size:13px;font-weight:700;color:#e5e5e5" id="p1-name">You</div><div style="font-size:22px;font-weight:800;letter-spacing:-1px" id="p1-score">0</div></div>
+    <div style="text-align:center"><div id="round-label" style="font-size:11px;color:#737373;font-weight:700;letter-spacing:2px;text-transform:uppercase"></div></div>
+    <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:#e5e5e5" id="p2-name">Opponent</div><div style="font-size:22px;font-weight:800;letter-spacing:-1px" id="p2-score">0</div></div>
+  </div>
+  <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+  <div id="question-box" style="background:#161618;border-radius:16px;padding:24px 20px;margin-bottom:12px;border:1px solid #262626;min-height:80px;display:flex;align-items:center;justify-content:center">
+    <p id="question-text" style="font-size:18px;font-weight:600;line-height:1.5;text-align:center"></p>
+  </div>
+  <div style="text-align:center;margin-bottom:12px"><span id="diff-badge" class="diff-badge"></span></div>
+  <div id="options-container" class="options-grid" style="opacity:0;transform:translateY(12px);pointer-events:none"></div>
+  <div id="play-status" style="text-align:center;margin-top:16px;font-size:13px;color:#525252;font-weight:500"></div>
+  <div id="round-result" style="text-align:center;margin-top:14px;display:none;animation:fadeIn .3s ease"></div>
+</div>
+
+<!-- ═══ GAME OVER ═══ -->
+<div id="screen-gameover" class="screen" style="align-items:center;padding:24px 20px;overflow-y:auto">
+  <div id="go-emoji" style="font-size:48px;margin-bottom:8px"></div>
+  <h2 id="go-title" style="font-size:28px;font-weight:800;margin-bottom:4px;letter-spacing:-1px"></h2>
+  <p id="go-subtitle" style="font-size:14px;color:#737373;margin-bottom:4px"></p>
+  <div id="go-streak" style="display:none;margin-bottom:16px;padding:4px 14px;border-radius:20px;background:#1a1500;border:1px solid #854d0e;font-size:13px;font-weight:700;color:#eab308"></div>
+  <div id="go-scores" style="display:flex;width:100%;max-width:320px;gap:12px;margin-bottom:20px"></div>
+  <!-- Tournament Chain CTA -->
+  <button id="go-chain-btn" onclick="shareChainChallenge()" style="width:100%;max-width:320px;padding:16px 20px;font-size:16px;font-weight:700;border-radius:14px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#052e16;border:none;cursor:pointer;margin-bottom:12px;box-shadow:0 4px 20px rgba(74,222,128,.2);transition:transform .1s;font-family:inherit"></button>
+  <!-- Dynamic actions based on win/loss -->
+  <div id="go-actions-dynamic" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;margin-bottom:16px"></div>
+  <!-- Topic nudge -->
+  <div id="go-topic-nudge" style="width:100%;max-width:320px;margin-bottom:16px"></div>
+  <div id="go-breakdown" style="width:100%;max-width:320px;background:#161618;border:1px solid #262626;border-radius:14px;padding:16px;margin-bottom:20px"></div>
+  <div id="go-actions" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;margin-bottom:12px">
+    <button class="btn-secondary" onclick="showSurvey()" style="font-size:13px;padding:12px;color:#a3a3a3">📋 What topics should we add next?</button>
+  </div>
+</div>
+
+<!-- ═══ REMATCH TOPIC PICKER ═══ -->
+<div id="overlay-rematch" class="overlay">
+  <div class="modal">
+    <h3 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:16px">Pick Topic for Rematch</h3>
+    <div id="rematch-topics" class="topic-grid" style="max-height:50dvh;overflow-y:auto"></div>
+    <button onclick="closeRematch()" style="background:none;color:#525252;font-size:13px;margin-top:12px;width:100%;text-align:center;font-weight:500">Cancel</button>
+  </div>
+</div>
+
+<!-- ═══ SURVEY ═══ -->
+<div id="overlay-survey" class="overlay">
+  <div class="modal">
+    <h3 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:4px">What should we add next?</h3>
+    <p style="font-size:12px;color:#737373;text-align:center;margin-bottom:4px">Tap to pick your top 10 — order matters!</p>
+    <p id="survey-counter" style="font-size:11px;color:#525252;text-align:center;margin-bottom:12px">0 selected</p>
+    <div id="survey-tiles" class="survey-grid"></div>
+    <input type="text" class="name-input" id="survey-free" placeholder="Something else? Type here..." style="font-size:13px;padding:10px;margin:12px 0;text-align:left">
+    <button class="btn-primary" onclick="submitSurvey()" style="font-size:15px;padding:14px">Submit 🗳️</button>
+    <button onclick="closeSurvey()" style="background:none;color:#525252;font-size:13px;margin-top:10px;width:100%;text-align:center;font-weight:500">Skip</button>
+  </div>
+</div>
+
+<!-- ═══ JOIN (invite link) ═══ -->
+<div id="screen-join" class="screen" style="align-items:center;justify-content:center;padding:40px 24px">
+  <div id="join-icon" style="font-size:48px;margin-bottom:16px"></div>
+  <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">You've Been Challenged!</h2>
+  <p id="join-topic" style="font-size:16px;color:#a3a3a3;margin-bottom:4px;font-weight:600"></p>
+  <p id="join-room" style="font-size:14px;color:#525252;margin-bottom:32px"></p>
+  <input type="text" class="name-input" id="join-name" placeholder="Your name" maxlength="20" style="max-width:280px;margin-bottom:24px">
+  <button class="btn-primary" onclick="joinFromLink()" style="max-width:320px">Accept Challenge ⚡</button>
+</div>
+
+<!-- ═══ ROOM NOT FOUND ═══ -->
+<div id="screen-error" class="screen" style="align-items:center;justify-content:center;padding:40px 24px">
+  <div id="error-emoji" style="font-size:56px;margin-bottom:16px">⚔️💨</div>
+  <h2 id="error-title" style="font-size:20px;font-weight:700;margin-bottom:8px;text-align:center;line-height:1.4"></h2>
+  <p id="error-desc" style="font-size:14px;color:#737373;margin-bottom:32px;text-align:center"></p>
+  <button class="btn-primary" id="error-cta" style="max-width:320px;margin-bottom:12px"></button>
+  <button class="btn-secondary" onclick="goToTopics('quick')" style="max-width:320px;width:100%">Or play a Quick Match now ⚡</button>
+</div>
+
+<!-- ═══ DISCONNECTED ═══ -->
+<div id="screen-disconnected" class="screen" style="align-items:center;justify-content:center;padding:40px 24px">
+  <div style="font-size:48px;margin-bottom:16px">📡</div>
+  <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">Opponent Disconnected</h2>
+  <p style="font-size:14px;color:#737373;margin-bottom:32px">Your opponent left the game.</p>
+  <button class="btn-primary" onclick="goHome()" style="max-width:320px">Back to Home</button>
+</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ─── State ──────────────────────────────────────────────────────
+let socket = null;
+let S = {
+  playerName:'', playerIndex:-1, roomId:null, roomName:'', topic:'', icon:'',
+  players:[], scores:[0,0], currentRound:0, totalRounds:7, isFinal:false,
+  selectedAnswer:null, opponentAnswered:false, timerInterval:null, timeLeft:10,
+  optionsRevealed:false, roundHistory:[], gameOverData:null,
+  mode:'quick', pendingTopic:null, surveyPicks:[], lastResult:null,
+  waitTimerInterval:null, waitStart:0,
+};
+
+const SURVEY_TOPICS = [
+  "Bollywood 2000s","Anime / Manga","Indian Geography","Science & Space",
+  "Music (Hindi)","Startups & Business","World Wars","Food & Cooking",
+  "Mythology (Indian)","TV Shows (Indian)","Cars & Bikes","Crypto & Finance",
+  "Sports (Other)","Geography (World)","Bollywood Music 90s","Tech & Gadgets",
+  "Astronomy","Literature","Pop Culture","Video Games",
+  "History (India)","Fashion & Brands","Bollywood Dialogues","Travel & Tourism",
+  "Animal Kingdom","Human Body","Art & Artists","Riddles & Logic",
+  "Indian Politics","Mythology (Greek)"
+];
+
+const ERROR_HEADLINES = [
+  "That round's over, but the next one's on you",
+  "Looks like you showed up fashionably late 🕐",
+  "The battle's done, but the war rages on ⚔️",
+];
+const ERROR_CTAS = [
+  "Share a link & get back at them 🔥",
+  "Pick a topic and challenge your crew",
+  "Your turn to set the challenge ⚡",
+];
+
+// ─── Socket ─────────────────────────────────────────────────────
+function connectSocket() {
+  if (socket && socket.connected) return;
+  socket = io({ reconnection:true, reconnectionAttempts:5, reconnectionDelay:1000 });
+
+  socket.on('room-update', d => {
+    S.players = d.players; S.roomName = d.roomName; S.topic = d.topic; S.icon = d.icon;
+    renderWaitingRoom();
+  });
+  socket.on('room-ready', () => {
+    clearInterval(S.waitTimerInterval);
+    el('wait-timer').style.display = 'none';
+    el('timeout-msg').style.display = 'none';
+    el('start-btn').style.display = 'block';
+  });
+  socket.on('waiting-timeout', () => {
+    clearInterval(S.waitTimerInterval);
+    el('wait-timer').style.display = 'none';
+    el('share-btn').style.display = 'none';
+    el('timeout-msg').style.display = 'block';
+  });
+
+  socket.on('game-countdown', () => {
+    showScreen('countdown');
+    let c = 3;
+    el('countdown-num').textContent = c;
+    el('countdown-vs').textContent = `${S.players[0]?.name||'P1'} vs ${S.players[1]?.name||'P2'}`;
+    const iv = setInterval(() => { c--; el('countdown-num').textContent = c||'GO!'; if(c<=0) clearInterval(iv); }, 1000);
+  });
+
+  socket.on('round-start', d => {
+    showScreen('playing');
+    S.currentRound=d.round; S.totalRounds=d.totalRounds; S.isFinal=d.isFinal;
+    S.selectedAnswer=null; S.opponentAnswered=false; S.optionsRevealed=false; S.timeLeft=10;
+    clearInterval(S.timerInterval);
+
+    const me=S.players[S.playerIndex]||{name:'You'}, op=S.players[1-S.playerIndex]||{name:'Opponent'};
+    el('p1-name').textContent=me.name; el('p2-name').textContent=op.name;
+    el('p1-score').textContent=S.scores[S.playerIndex]; el('p2-score').textContent=S.scores[1-S.playerIndex];
+    const rl=el('round-label');
+    rl.textContent=d.isFinal?'🔥 FINAL · 2×':`Round ${d.round}/${d.totalRounds}`;
+    rl.style.color=d.isFinal?'#eab308':'#737373';
+    el('question-text').textContent=d.question;
+    el('question-box').style.border=d.isFinal?'1px solid #854d0e':'1px solid #262626';
+    const db=el('diff-badge'), dl={1:'EASY',2:'MEDIUM',3:'HARD',4:'🔥 TRUE FAN'};
+    const dbg={1:'#1a1a1c',2:'#1a1a1c',3:'#713f12',4:'#7c2d12'}, dc={1:'#737373',2:'#737373',3:'#eab308',4:'#fb923c'}, dbd={1:'#262626',2:'#262626',3:'#854d0e',4:'#9a3412'};
+    db.textContent=dl[d.difficulty]||'MEDIUM'; db.style.background=dbg[d.difficulty]; db.style.color=dc[d.difficulty]; db.style.border=`1px solid ${dbd[d.difficulty]}`;
+    const oc=el('options-container'); oc.innerHTML='';
+    oc.style.opacity='0'; oc.style.transform='translateY(12px)'; oc.style.pointerEvents='none';
+    el('play-status').innerHTML='<span style="animation:pulse 1s infinite">Read the question... options coming!</span>';
+    el('round-result').style.display='none';
+    el('timer-fill').style.width='100%'; el('timer-fill').style.backgroundColor='#525252';
+  });
+
+  socket.on('options-reveal', d => {
+    S.optionsRevealed=true;
+    const oc=el('options-container'); oc.innerHTML='';
+    d.options.forEach((opt,i) => {
+      const btn=document.createElement('button'); btn.className='option-tile';
+      btn.innerHTML=`<span class="option-label">${String.fromCharCode(65+i)}</span><span style="line-height:1.3">${opt}</span>`;
+      btn.onclick=()=>submitAnswer(i); btn.id=`opt-${i}`; oc.appendChild(btn);
+    });
+    oc.style.opacity='1'; oc.style.transform='translateY(0)'; oc.style.pointerEvents='auto';
+    el('play-status').textContent='';
+    S.timeLeft=10; updateTimer();
+    S.timerInterval=setInterval(()=>{S.timeLeft-=.1;if(S.timeLeft<=0){S.timeLeft=0;clearInterval(S.timerInterval);}updateTimer();},100);
+  });
+
+  socket.on('opponent-answered', () => { S.opponentAnswered=true; });
+
+  socket.on('round-result', d => {
+    clearInterval(S.timerInterval);
+    S.scores[0]=d.scores[0]; S.scores[1]=d.scores[1];
+    const my=d.results[S.playerIndex], op=d.results[1-S.playerIndex];
+    el('p1-score').textContent=d.scores[S.playerIndex]; el('p2-score').textContent=d.scores[1-S.playerIndex];
+    el('options-container').style.pointerEvents='none';
+    for(let i=0;i<4;i++){
+      const btn=el(`opt-${i}`); if(!btn) continue;
+      btn.classList.remove('selected','correct','wrong','dimmed');
+      if(i===d.correctAnswer) btn.classList.add('correct');
+      else if(i===my.answerIndex) btn.classList.add('wrong');
+      else btn.classList.add('dimmed');
+      const labels=[];
+      if(my.answerIndex===i) labels.push('You');
+      if(op.answerIndex===i) labels.push(S.players[1-S.playerIndex]?.name||'Opponent');
+      if(labels.length){const l=document.createElement('div');l.style.cssText='font-size:10px;color:#737373;margin-top:5px;font-weight:600';l.textContent=labels.join(' + ');btn.appendChild(l);}
+    }
+    const rr=el('round-result'); rr.style.display='block';
+    if(my.points>op.points) rr.innerHTML=`<span style="color:#4ade80;font-weight:700;font-size:15px">+${my.points} pts ${S.isFinal?'🔥':'🎯'}</span>`;
+    else if(my.points<op.points) rr.innerHTML=`<span style="color:#f87171;font-weight:700;font-size:15px">${S.players[1-S.playerIndex]?.name} was faster!</span>`;
+    else if(my.points===0&&op.points===0) rr.innerHTML=`<span style="color:#737373;font-weight:700;font-size:15px">Both wrong!</span>`;
+    else rr.innerHTML=`<span style="color:#eab308;font-weight:700;font-size:15px">Tied!</span>`;
+    el('play-status').textContent='';
+  });
+
+  socket.on('game-over', d => {
+    S.gameOverData=d; S.roundHistory=d.roundHistory;
+    renderGameOver(d); showScreen('gameover');
+  });
+  socket.on('player-disconnected', () => showScreen('disconnected'));
+  socket.on('rematch-ready', d => {
+    S.players=d.players; S.scores=[0,0]; S.roundHistory=[];
+    S.topic=d.topic; S.roomName=d.roomName; S.icon=d.icon;
+    el('start-btn').style.display='block';
+    showScreen('waiting'); renderWaitingRoom();
+  });
+  socket.on('error', d => {
+    if(d.message==='Room not found or expired') showErrorScreen('expired');
+    else if(d.message==='Room is full'||d.message==='Game already started') showErrorScreen('underway',d.topic,d.icon);
+    else alert(d.message);
+  });
+}
+
+// ─── Navigation ─────────────────────────────────────────────────
+function el(id){return document.getElementById(id)}
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const e=el(`screen-${id}`);if(e){e.classList.add('active');e.style.animation='none';e.offsetHeight;e.style.animation='fadeIn .4s ease';}
+}
+function goHome(){if(socket)socket.disconnect();S.roomId=null;window.history.pushState({},'','/');showScreen('home');}
+function goToTopics(mode){
+  S.playerName=el('player-name').value.trim()||'Player';
+  S.mode=mode;
+  const badge=el('mode-badge').querySelector('span');
+  if(mode==='quick'){badge.textContent='⚡ Quick Match vs Bot';badge.style.background='#1a1a2e';badge.style.color='#a5b4fc';badge.style.borderColor='#312e81';}
+  else{badge.textContent='🤝 Challenge a Friend';badge.style.background='#0a1f0a';badge.style.color='#4ade80';badge.style.borderColor='#166534';}
+  loadTopics(); showScreen('topics');
+}
+
+// ─── Topics ─────────────────────────────────────────────────────
+let topicsData=[];
+async function loadTopics(){
+  try{
+    const res=await fetch('/api/topics'); topicsData=await res.json();
+    const grid=el('topic-list'); grid.innerHTML='';
+    el('topic-count').textContent=topicsData.length;
+    topicsData.forEach((t,i)=>{
+      const btn=document.createElement('button'); btn.className='topic-card';
+      btn.style.animation=`slideUp .4s ease ${i*.03}s both`;
+      btn.innerHTML=`<span class="icon">${t.icon}</span><span class="name">${t.name}</span>`;
+      btn.onclick=()=>onTopicPick(t.name); grid.appendChild(btn);
+    });
+  }catch(e){console.error(e);}
+}
+
+function onTopicPick(topic){
+  S.pendingTopic=topic;
+  if(S.mode==='quick'){
+    el('diff-topic-label').textContent=`${TOPIC_ICONS_LOCAL[topic]||'🎯'} ${topic}`;
+    el('overlay-difficulty').classList.add('show');
+  } else {
+    createRoom(topic);
+  }
+}
+const TOPIC_ICONS_LOCAL={"General Knowledge":"🧠","Marvel / MCU":"🦸","Sacred Games":"🔱","Cricket":"🏏","Game of Thrones":"⚔️","World Flags":"🏳️","Friends":"☕","Indian Independence":"🇮🇳","Football / Soccer":"⚽","Scam 1992":"📈","World Capitals":"🌍","The Family Man":"🕵️","Disney Movies":"🏰","Harry Potter":"⚡","Bollywood 90s":"🎬","Panchayat":"🏡","The Office (US)":"📎","Internet Memes":"🌐","Famous Logos":"™️","Olympics":"🏅"};
+
+// ─── Bot Difficulty ─────────────────────────────────────────────
+function pickDifficulty(diff){
+  el('overlay-difficulty').classList.remove('show');
+  connectSocket();
+  S.playerIndex=0;
+  socket.emit('start-bot-game',{topic:S.pendingTopic,difficulty:diff,name:S.playerName});
+  showScreen('waiting');
+}
+function closeDifficulty(){el('overlay-difficulty').classList.remove('show');}
+
+// ─── Multiplayer Room ───────────────────────────────────────────
+async function createRoom(topic){
+  try{
+    const res=await fetch(`/api/create-room/${encodeURIComponent(topic)}`);
+    const d=await res.json(); S.roomId=d.roomId; S.roomName=d.roomName; S.topic=topic; S.icon=d.icon; S.scores=[0,0];
+    window.history.pushState({},'',`/play/${d.roomId}`);
+    connectSocket(); socket.emit('join-room',{roomId:d.roomId,name:S.playerName}); S.playerIndex=0;
+    // Start wait timer visual
+    S.waitStart=Date.now();
+    el('wait-timer').style.display='block';
+    el('timeout-msg').style.display='none';
+    el('share-btn').style.display='block';
+    clearInterval(S.waitTimerInterval);
+    S.waitTimerInterval=setInterval(()=>{
+      const elapsed=(Date.now()-S.waitStart)/27000;
+      const pct=Math.max(0,100-elapsed*100);
+      el('wait-timer-fill').style.width=pct+'%';
+      el('wait-timer-fill').style.backgroundColor=pct>50?'#525252':pct>25?'#eab308':'#ef4444';
+      if(pct<=0)clearInterval(S.waitTimerInterval);
+    },500);
+    showScreen('waiting');
+  }catch(e){console.error(e);}
+}
+
+function renderWaitingRoom(){
+  el('wait-icon').textContent=S.icon; el('wait-topic').textContent=S.topic;
+  el('wait-room').textContent=`🏟️ ${S.roomName}`;
+  const pl=el('player-list');
+  pl.innerHTML=S.players.map(p=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;${S.players.length>1?'':'margin-bottom:16px'}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;background:#262626;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">${p.name[0]}</div>
+        <span style="font-size:14px;font-weight:600">${p.name}${p.index===S.playerIndex?' (You)':''}</span>
+      </div>
+      <span style="font-size:12px;color:#22c55e;font-weight:600">● Ready</span>
+    </div>`).join('');
+  if(S.players.length<2){
+    pl.innerHTML+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;background:#1a1a1c;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:1px dashed #333">?</div>
+        <span style="font-size:14px;font-weight:600;color:#525252">Waiting for opponent...</span>
+      </div><span style="font-size:12px;color:#525252;animation:pulse 1.5s infinite">⏳</span></div>`;
+  }
+}
+
+function shareInvite(){
+  const url=`${window.location.origin}/play/${S.roomId}`;
+  const msg=`⚡ I challenge you to R7!\n\n🎯 Topic: ${S.topic}\n🏟️ Room: ${S.roomName}\n\nBeat me if you can 👇\n${url}`;
+  if(socket) socket.emit('invite-shared');
+  const btn=el('share-btn');
+  if(navigator.share){navigator.share({title:'R7 Challenge',text:msg,url}).catch(()=>fallbackCopy(msg,btn));}
+  else fallbackCopy(msg,btn);
+}
+function fallbackCopy(text,btn){
+  navigator.clipboard.writeText(text).catch(()=>{const t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;left:-9999px';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);});
+  btn.textContent='✓ Copied! Paste in WhatsApp'; btn.style.borderColor='#22c55e'; btn.style.background='#052e16';
+  setTimeout(()=>{btn.textContent='📤 Share Invite Link';btn.style.borderColor='#333';btn.style.background='#161618';},3000);
+}
+
+function fallbackBot(diff){
+  el('timeout-msg').style.display='none';
+  socket.emit('start-bot-game',{roomId:S.roomId,difficulty:diff,name:S.playerName});
+}
+
+// ─── Start / Rules ──────────────────────────────────────────────
+function startGame(){
+  const rc=el('rules-content');
+  rc.innerHTML=[['🎯','Correct Answer','100 base points'],['⚡','Speed Bonus','Up to +100 — faster = more'],['🔥','Final Round = 2×','Round 7 is worth double!'],['👀','Read Fast','Question first — options after 1 sec']].map(([i,t,d])=>`<div style="display:flex;gap:12px;align-items:flex-start"><span style="font-size:20px;flex-shrink:0">${i}</span><div><div style="font-size:14px;font-weight:700;margin-bottom:2px">${t}</div><div style="font-size:13px;color:#a3a3a3">${d}</div></div></div>`).join('');
+  el('overlay-rules').classList.add('show');
+}
+function dismissRules(){el('overlay-rules').classList.remove('show');socket.emit('start-game');}
+
+// ─── Playing ────────────────────────────────────────────────────
+function submitAnswer(idx){
+  if(S.selectedAnswer!==null||!S.optionsRevealed) return;
+  S.selectedAnswer=idx;
+  const btn=el(`opt-${idx}`); if(btn)btn.classList.add('selected');
+  el('options-container').style.pointerEvents='none';
+  if(!S.opponentAnswered){const n=S.players[1-S.playerIndex]?.name||'Opponent';el('play-status').innerHTML=`<span style="animation:pulse 1.5s infinite">Waiting for ${n}...</span>`;}
+  socket.emit('submit-answer',{answerIndex:idx,timestamp:Date.now()});
+}
+function updateTimer(){
+  const pct=(S.timeLeft/10)*100, f=el('timer-fill');
+  f.style.width=Math.max(0,pct)+'%';
+  f.style.backgroundColor=S.timeLeft>5?'#22c55e':S.timeLeft>2.5?'#eab308':'#ef4444';
+}
+
+// ─── Game Over ──────────────────────────────────────────────────
+function renderGameOver(d){
+  const mi=S.playerIndex, oi=1-mi;
+  const ms=d.scores[mi], os=d.scores[oi];
+  const mn=d.players[mi]?.name||'You', on=d.players[oi]?.name||'Opponent';
+  const won=ms>os, lost=ms<os, draw=ms===os;
+
+  // ── Win streak tracking ──
+  let streak = 0;
+  try { streak = parseInt(localStorage.getItem('r7_streak')) || 0; } catch(e){}
+  if(won) { streak++; } else { streak = 0; }
+  try { localStorage.setItem('r7_streak', streak); } catch(e){}
+  S.lastResult = { won, lost, draw, myScore: ms, opScore: os, myName: mn, opName: on, streak, isBot: d.isBot };
+
+  // ── Header ──
+  el('go-emoji').textContent=won?'🏆':lost?'💪':'🤝';
+  const t=el('go-title'); t.textContent=won?'Victory!':lost?'Close One!':'Draw!';
+  t.style.background=won?'linear-gradient(135deg,#4ade80,#22c55e)':lost?'linear-gradient(135deg,#94a3b8,#64748b)':'linear-gradient(135deg,#eab308,#f59e0b)';
+  t.style.WebkitBackgroundClip='text'; t.style.WebkitTextFillColor='transparent';
+  el('go-subtitle').textContent=`${S.topic} · ${S.roomName}`;
+
+  // ── Streak badge ──
+  const sb=el('go-streak');
+  if(won && streak>=2){
+    sb.style.display='inline-block';
+    sb.textContent=streak>=5?`🔥 ${streak}-win streak! Unstoppable!`:streak>=3?`🔥 ${streak}-win streak!`:`🔥 ${streak} wins in a row`;
+  } else { sb.style.display='none'; }
+
+  // ── Scores ──
+  el('go-scores').innerHTML=[[mn,ms,ms>=os],[on,os,os>ms]].map(([n,s,w])=>`<div style="flex:1;background:${w?'#0a1f0a':'#161618'};border:1px solid ${w?'#166534':'#262626'};border-radius:14px;padding:14px;text-align:center"><div style="font-size:12px;color:#737373;font-weight:600;margin-bottom:4px">${n}</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:${w?'#4ade80':'#e5e5e5'}">${s}</div></div>`).join('');
+
+  // ── Chain CTA button ──
+  const chainBtn=el('go-chain-btn');
+  if(won){
+    chainBtn.textContent='👑 Share Result & Challenge Next';
+    chainBtn.style.background='linear-gradient(135deg,#4ade80,#22c55e)';
+    chainBtn.style.color='#052e16';
+  } else if(lost){
+    chainBtn.textContent='😤 Share & Get Someone to Avenge You';
+    chainBtn.style.background='linear-gradient(135deg,#f87171,#ef4444)';
+    chainBtn.style.color='#1a0000';
+  } else {
+    chainBtn.textContent='⚡ Share Result & Challenge Next';
+    chainBtn.style.background='linear-gradient(135deg,#eab308,#f59e0b)';
+    chainBtn.style.color='#1a1500';
+  }
+
+  // ── Breakdown ──
+  const bd=el('go-breakdown');
+  bd.innerHTML=`<div style="font-size:12px;color:#737373;font-weight:600;margin-bottom:4px;letter-spacing:1px;text-transform:uppercase">Round Breakdown</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;padding:6px 10px;background:#0a0a0b;border-radius:8px;border:1px solid #1e1e20"><span style="font-size:14px">💡</span><span style="font-size:12px;color:#a3a3a3;font-weight:500">Tap any round to see a fun fact!</span></div><div id="round-list"></div>`;
+
+  const rl=el('round-list');
+  d.roundHistory.forEach((rh,i)=>{
+    const myR=rh.results[mi], opR=rh.results[oi];
+    const row=document.createElement('div');
+    row.innerHTML=`<button style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px;width:100%;background:none;border:none;cursor:pointer;border-bottom:1px solid #1e1e20" onclick="toggleFact(${i})">
+      <span style="font-size:13px;font-weight:700;color:${myR.correct?'#4ade80':'#ef4444'};width:48px;text-align:left">${myR.correct?'+'+myR.points:'✗'}</span>
+      <span style="font-size:12px;color:${rh.isFinal?'#eab308':'#525252'};font-weight:600">${rh.isFinal?'🔥 R7':'R'+(i+1)} <span id="arrow-${i}">▸</span></span>
+      <span style="font-size:13px;font-weight:700;color:${opR.correct?'#4ade80':'#ef4444'};width:48px;text-align:right">${opR.correct?'+'+opR.points:'✗'}</span>
+    </button><div id="fact-${i}" style="display:none;padding:12px 8px 16px;animation:fadeIn .3s ease;border-bottom:1px solid #1e1e20">
+      <div style="font-size:13px;font-weight:600;color:#d4d4d4;margin-bottom:6px">${rh.question}</div>
+      <div style="font-size:12px;font-weight:600;color:#4ade80;margin-bottom:8px">✓ ${rh.options[rh.correctAnswer]}</div>
+      <div style="font-size:12px;color:#a3a3a3;line-height:1.6;background:#0a0a0b;border-radius:10px;padding:10px 12px;border:1px solid #1e1e20">💡 ${rh.fact}</div></div>`;
+    rl.appendChild(row);
+  });
+
+  // ── Dynamic Actions (context-aware) ──
+  const ad = el('go-actions-dynamic');
+  if(won) {
+    ad.innerHTML = `
+      <div style="display:flex;gap:10px">
+        <button class="btn-secondary" onclick="showRematchPicker()" style="flex:1;padding:14px;font-size:14px">Rematch ⚡</button>
+        <button class="btn-secondary" onclick="newTopic()" style="flex:1;padding:14px;font-size:14px">New Topic</button>
+      </div>`;
+  } else if(lost) {
+    ad.innerHTML = `
+      <button class="btn-secondary" onclick="showRematchPicker()" style="width:100%;padding:14px;font-size:14px;border-color:#7f1d1d;color:#f87171">🔄 Rematch — I want a do-over</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn-secondary" onclick="startQuickMatchFromGO()" style="flex:1;padding:14px;font-size:13px">🤖 Practice Mode</button>
+        <button class="btn-secondary" onclick="newTopic()" style="flex:1;padding:14px;font-size:13px">🔀 Try Another Topic</button>
+      </div>`;
+  } else {
+    ad.innerHTML = `
+      <div style="display:flex;gap:10px">
+        <button class="btn-secondary" onclick="showRematchPicker()" style="flex:1;padding:14px;font-size:14px">Rematch ⚡</button>
+        <button class="btn-secondary" onclick="newTopic()" style="flex:1;padding:14px;font-size:14px">New Topic</button>
+      </div>`;
+  }
+
+  // ── Topic Nudge ──
+  const nudge = el('go-topic-nudge');
+  // Track how many games played on this topic
+  let topicPlays = 0;
+  try { 
+    const tp = JSON.parse(localStorage.getItem('r7_topic_plays') || '{}');
+    tp[S.topic] = (tp[S.topic] || 0) + 1;
+    topicPlays = tp[S.topic];
+    localStorage.setItem('r7_topic_plays', JSON.stringify(tp));
+  } catch(e){}
+
+  // Pick 2 random other topics to suggest
+  const otherTopics = topicsData.filter(t => t.name !== S.topic);
+  const shuffled = otherTopics.sort(() => Math.random() - 0.5).slice(0, 2);
+
+  if(topicPlays >= 2) {
+    const nudgeMessages = [
+      `You've played ${topicPlays} games on ${S.topic} — explore something new?`,
+      `Mastered ${S.topic}? Test yourself on a fresh topic 👇`,
+      `${topicPlays} rounds of ${S.topic}! Time to expand your range?`,
+    ];
+    nudge.innerHTML = `
+      <div style="background:#161618;border:1px solid #262626;border-radius:14px;padding:14px;text-align:center">
+        <p style="font-size:12px;color:#a3a3a3;margin-bottom:10px">${nudgeMessages[Math.floor(Math.random()*nudgeMessages.length)]}</p>
+        <div style="display:flex;gap:8px;justify-content:center">
+          ${shuffled.map(t => `<button onclick="quickSwitchTopic('${t.name}')" style="background:#0f0f11;border:1px solid #333;border-radius:10px;padding:10px 14px;cursor:pointer;font-family:inherit;transition:all .15s"><span style="font-size:18px;display:block;margin-bottom:2px">${t.icon}</span><span style="font-size:11px;font-weight:600;color:#d4d4d4">${t.name}</span></button>`).join('')}
+        </div>
+      </div>`;
+  } else {
+    nudge.innerHTML = '';
+  }
+}
+
+// ─── Tournament Chain Share ─────────────────────────────────────
+async function shareChainChallenge(){
+  const r=S.lastResult; if(!r) return;
+  const btn=el('go-chain-btn');
+  btn.textContent='⏳ Creating room...'; btn.style.pointerEvents='none';
+
+  try{
+    // Create a new room on the same topic for the next challenger
+    const res=await fetch(`/api/create-room/${encodeURIComponent(S.topic)}`);
+    const d=await res.json();
+    const url=`${window.location.origin}/play/${d.roomId}`;
+    const icon=TOPIC_ICONS_LOCAL[S.topic]||'🎯';
+
+    let msg;
+    if(r.won){
+      const streakLine=r.streak>=3?`\n🔥 ${r.streak}-win streak`:(r.streak===2?`\n🔥 2 in a row`:'');
+      const taunts=[
+        `Think you can do better? 👇`,
+        `Who's brave enough to challenge the champion? 👇`,
+        `Next victim, please 👇`,
+        `Line up. I dare you 👇`,
+      ];
+      const taunt=taunts[Math.floor(Math.random()*taunts.length)];
+      msg=`⚡ R7 Result\n\n${icon} ${S.topic} · ${S.roomName}\n\n👑 ${r.myName} ${r.myScore} — ${r.opScore} ${r.opName}${streakLine}\n\n${taunt}\n${url}`;
+    } else if(r.lost){
+      const pleas=[
+        `Someone avenge me 😤`,
+        `I need backup. Can anyone take this person down? 😤`,
+        `${r.opName} just destroyed me. Who's stepping up? 💀`,
+        `I got cooked. Someone restore my honour 🫡`,
+      ];
+      const plea=pleas[Math.floor(Math.random()*pleas.length)];
+      msg=`⚡ R7 Result\n\n${icon} ${S.topic} · ${S.roomName}\n\n${r.opName} ${r.opScore} — ${r.myScore} ${r.myName}\n\n${plea}\n${url}`;
+    } else {
+      msg=`⚡ R7 Result\n\n${icon} ${S.topic} · ${S.roomName}\n\n🤝 ${r.myName} ${r.myScore} — ${r.opScore} ${r.opName} (DRAW)\n\nWe need a tiebreaker. Who's jumping in? 👇\n${url}`;
+    }
+
+    if(socket) socket.emit('invite-shared');
+
+    if(navigator.share){
+      navigator.share({title:'R7 Result',text:msg,url}).catch(()=>chainCopyFallback(msg,btn,r));
+    } else {
+      chainCopyFallback(msg,btn,r);
+    }
+  } catch(e){
+    console.error(e);
+    btn.textContent='Something went wrong — try again';
+    btn.style.pointerEvents='auto';
+    setTimeout(()=>resetChainBtn(r),2000);
+  }
+}
+
+function chainCopyFallback(text,btn,r){
+  navigator.clipboard.writeText(text).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;left:-9999px';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+  });
+  btn.textContent='✅ Copied! Paste in your group';
+  btn.style.background='#052e16'; btn.style.color='#4ade80'; btn.style.pointerEvents='auto';
+  setTimeout(()=>resetChainBtn(r),3500);
+}
+
+function resetChainBtn(r){
+  const btn=el('go-chain-btn'); if(!btn) return;
+  btn.style.pointerEvents='auto';
+  if(r.won){btn.textContent='👑 Share Result & Challenge Next';btn.style.background='linear-gradient(135deg,#4ade80,#22c55e)';btn.style.color='#052e16';}
+  else if(r.lost){btn.textContent='😤 Share & Get Someone to Avenge You';btn.style.background='linear-gradient(135deg,#f87171,#ef4444)';btn.style.color='#1a0000';}
+  else{btn.textContent='⚡ Share Result & Challenge Next';btn.style.background='linear-gradient(135deg,#eab308,#f59e0b)';btn.style.color='#1a1500';}
+}
+function toggleFact(i){const e=el(`fact-${i}`),a=el(`arrow-${i}`);if(!e)return;const s=e.style.display==='none';e.style.display=s?'block':'none';if(a)a.textContent=s?'▼':'▸';}
+
+// ─── Rematch with topic picker ──────────────────────────────────
+function showRematchPicker(){
+  const grid=el('rematch-topics'); grid.innerHTML='';
+  topicsData.forEach(t=>{
+    const btn=document.createElement('button'); btn.className='topic-card';
+    btn.innerHTML=`<span class="icon">${t.icon}</span><span class="name">${t.name}</span>`;
+    btn.onclick=()=>{el('overlay-rematch').classList.remove('show');socket.emit('request-rematch',{topic:t.name});};
+    if(t.name===S.topic) btn.style.borderColor='#6366f1';
+    grid.appendChild(btn);
+  });
+  el('overlay-rematch').classList.add('show');
+}
+function closeRematch(){el('overlay-rematch').classList.remove('show');}
+function newTopic(){if(socket)socket.disconnect();S.roomId=null;window.history.pushState({},'','/');goToTopics(S.mode);}
+function leaveRoom(){if(socket)socket.disconnect();S.roomId=null;window.history.pushState({},'','/');showScreen('topics');}
+
+function startQuickMatchFromGO(){
+  if(socket) socket.disconnect();
+  S.roomId=null; S.pendingTopic=S.topic; S.mode='quick';
+  window.history.pushState({},'','/');
+  el('diff-topic-label').textContent=`${TOPIC_ICONS_LOCAL[S.topic]||'🎯'} ${S.topic}`;
+  el('overlay-difficulty').classList.add('show');
+}
+
+function quickSwitchTopic(topic){
+  if(socket) socket.disconnect();
+  S.roomId=null; S.pendingTopic=topic; S.mode=S.mode||'quick';
+  window.history.pushState({},'','/');
+  // If in challenge mode, create multiplayer room; else show bot difficulty
+  if(S.mode==='challenge'){
+    connectSocket(); createRoom(topic);
+  } else {
+    el('diff-topic-label').textContent=`${TOPIC_ICONS_LOCAL[topic]||'🎯'} ${topic}`;
+    el('overlay-difficulty').classList.add('show');
+  }
+}
+
+// ─── Survey ─────────────────────────────────────────────────────
+function showSurvey(){
+  S.surveyPicks=[];
+  const grid=el('survey-tiles'); grid.innerHTML='';
+  SURVEY_TOPICS.forEach(t=>{
+    const btn=document.createElement('button'); btn.className='survey-tile'; btn.id=`sv-${t}`;
+    btn.innerHTML=`${t}<div class="num"></div>`;
+    btn.onclick=()=>toggleSurveyPick(t);
+    grid.appendChild(btn);
+  });
+  updateSurveyCounter();
+  el('overlay-survey').classList.add('show');
+}
+function toggleSurveyPick(t){
+  const idx=S.surveyPicks.indexOf(t);
+  if(idx>=0){S.surveyPicks.splice(idx,1);}
+  else if(S.surveyPicks.length<10){S.surveyPicks.push(t);}
+  // Update all tiles
+  SURVEY_TOPICS.forEach(st=>{
+    const btn=el(`sv-${st}`); if(!btn)return;
+    const pi=S.surveyPicks.indexOf(st);
+    if(pi>=0){btn.classList.add('picked');btn.querySelector('.num').textContent=`#${pi+1}`;}
+    else{btn.classList.remove('picked');btn.querySelector('.num').textContent='';}
+  });
+  updateSurveyCounter();
+}
+function updateSurveyCounter(){
+  const c=S.surveyPicks.length;
+  let msg=`${c} selected`;
+  if(c>=5&&c<10) msg=`${c} selected — add more for your top 10!`;
+  if(c>=10) msg=`✓ Top 10 locked in!`;
+  el('survey-counter').textContent=msg;
+}
+async function submitSurvey(){
+  const ft=el('survey-free').value.trim();
+  try{
+    await fetch('/api/survey',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topics:S.surveyPicks,freeText:ft,playerName:S.playerName})});
+  }catch(e){console.error(e);}
+  el('overlay-survey').classList.remove('show');
+}
+function closeSurvey(){el('overlay-survey').classList.remove('show');}
+
+// ─── Room Not Found ─────────────────────────────────────────────
+function showErrorScreen(type,topic,icon){
+  const UNDERWAY_HEADLINES = [
+    "This battle's already underway ⚔️",
+    "You just missed the buzzer! 🔔",
+    "Two warriors already entered the arena",
+  ];
+  const UNDERWAY_DESCS = [
+    "Someone beat you to it — but you can start your own and challenge the winner!",
+    "The room filled up, but the next battle is yours to create.",
+    "First come, first served — your turn to throw down the gauntlet!",
+  ];
+  if(type==='underway'&&topic){
+    el('error-emoji').textContent='⚔️🔥';
+    el('error-title').textContent=UNDERWAY_HEADLINES[Math.floor(Math.random()*UNDERWAY_HEADLINES.length)];
+    el('error-desc').textContent=UNDERWAY_DESCS[Math.floor(Math.random()*UNDERWAY_DESCS.length)];
+    const cta=el('error-cta');
+    cta.textContent=`Start your own ${icon||'🎯'} ${topic} battle`;
+    cta.onclick=()=>{ S.playerName=S.playerName||localStorage.getItem('r7_name')||'Player'; connectSocket(); createRoom(topic); };
+  } else {
+    el('error-emoji').textContent='⚔️💨';
+    el('error-title').textContent=ERROR_HEADLINES[Math.floor(Math.random()*ERROR_HEADLINES.length)];
+    el('error-desc').textContent='This room has expired or the battle already ended.';
+    const cta=el('error-cta');
+    cta.textContent=ERROR_CTAS[Math.floor(Math.random()*ERROR_CTAS.length)];
+    cta.onclick=()=>goToTopics('challenge');
+  }
+  showScreen('error');
+}
+
+// ─── Join From Link ─────────────────────────────────────────────
+async function checkRoute(){
+  const match=window.location.pathname.match(/\/play\/([A-Z0-9]+)/i);
+  if(match){
+    const roomId=match[1].toUpperCase();
+    try{
+      const res=await fetch(`/api/room/${roomId}`);
+      if(!res.ok){showErrorScreen('expired');return;}
+      const d=await res.json();
+      if(d.playerCount>=2){showErrorScreen('underway',d.topic,d.icon);return;}
+      if(d.state!=='waiting'){showErrorScreen('underway',d.topic,d.icon);return;}
+      S.roomId=roomId; S.topic=d.topic; S.roomName=d.roomName; S.icon=d.icon;
+      el('join-icon').textContent=d.icon;
+      el('join-topic').textContent=`🎯 ${d.topic}`;
+      el('join-room').textContent=`🏟️ ${d.roomName}`;
+      // Pre-fill name
+      try{const saved=localStorage.getItem('r7_name');if(saved)el('join-name').value=saved;}catch(e){}
+      showScreen('join');
+    }catch(e){showErrorScreen('expired');}
+  }
+}
+function joinFromLink(){
+  S.playerName=el('join-name').value.trim()||'Player';
+  try{localStorage.setItem('r7_name',S.playerName);}catch(e){}
+  S.playerIndex=1;
+  connectSocket(); socket.emit('join-room',{roomId:S.roomId,name:S.playerName});
+  showScreen('waiting');
+}
+
+// ─── Init ───────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  try{const s=localStorage.getItem('r7_name');if(s)el('player-name').value=s;}catch(e){}
+  el('player-name').addEventListener('change',e=>{try{localStorage.setItem('r7_name',e.target.value);}catch(e){}});
+  checkRoute();
+});
+window.addEventListener('popstate',()=>{if(window.location.pathname==='/')goHome();else checkRoute();});
+</script>
+</body>
+</html>
