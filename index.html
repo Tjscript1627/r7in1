@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>R7 — 7 Rounds, 1 Minute, 1 Winner</title>
+<meta name="description" content="Fast-paced 1v1 trivia battles. Pick a topic. Challenge a friend. 7 rounds. Speed matters.">
+<meta property="og:title" content="⚡ R7 — I challenge you to a trivia battle!">
+<meta property="og:description" content="7 Rounds. 1 Minute. 1 Winner. Beat me if you can!">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+  body { background: #0a0a0b; color: #f5f5f5; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100dvh; display: flex; justify-content: center; }
+  #app { width: 100%; max-width: 480px; min-height: 100dvh; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .screen { flex: 1; display: none; flex-direction: column; padding: 16px; animation: fadeIn 0.4s ease; }
+  .screen.active { display: flex; }
+  button { font-family: inherit; cursor: pointer; border: none; outline: none; transition: transform 0.1s; }
+  button:active { transform: scale(0.97); }
+  .btn-primary { width: 100%; max-width: 320; padding: 18px 32px; font-size: 17px; font-weight: 700; border-radius: 14px; background: #f5f5f5; color: #0a0a0b; box-shadow: 0 4px 20px rgba(255,255,255,0.1); }
+  .btn-secondary { padding: 16px; font-size: 15px; font-weight: 700; border-radius: 12px; background: #161618; color: #e5e5e5; border: 1px solid #333; }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes countPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Topic grid */
+  .topic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow-y: auto; padding-bottom: 20px; }
+  .topic-card { background: #161618; border: 1px solid #262626; border-radius: 14px; padding: 20px 14px; text-align: left; }
+  .topic-card .icon { font-size: 28px; display: block; margin-bottom: 8px; }
+  .topic-card .name { font-size: 14px; font-weight: 600; color: #e5e5e5; line-height: 1.3; display: block; }
+  .topic-card .count { font-size: 11px; color: #525252; margin-top: 4px; display: block; }
+
+  /* Options grid */
+  .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; transition: all 0.3s ease; }
+  .option-tile { background: #161618; border: 1px solid #262626; border-radius: 14px; padding: 18px 10px; font-size: 15px; font-weight: 600; color: #e5e5e5; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 76px; transition: all 0.15s; }
+  .option-tile.selected { background: #1a1a2e; border: 2px solid #6366f1; color: #c7d2fe; }
+  .option-tile.correct { background: #052e16; border: 1px solid #166534; color: #4ade80; }
+  .option-tile.wrong { background: #2a0a0a; border: 1px solid #7f1d1d; color: #f87171; }
+  .option-tile.dimmed { opacity: 0.35; }
+  .option-label { font-size: 12px; font-weight: 700; color: #525252; margin-bottom: 5px; width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #262626; }
+  .option-tile.selected .option-label { color: #a5b4fc; background: #312e81; }
+  .option-tile.correct .option-label { color: #4ade80; background: #166534; }
+
+  /* Timer */
+  .timer-bar { width: 100%; height: 4px; background: #262626; border-radius: 2px; margin-bottom: 20px; overflow: hidden; }
+  .timer-fill { height: 100%; border-radius: 2px; transition: width 0.1s linear, background-color 0.3s; }
+
+  /* Score display */
+  .score-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 4px; }
+  .score-name { font-size: 13px; font-weight: 700; color: #e5e5e5; }
+  .score-value { font-size: 22px; font-weight: 800; letter-spacing: -1px; }
+
+  /* Difficulty badge */
+  .diff-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; }
+
+  /* Round breakdown */
+  .round-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 4px; width: 100%; background: none; cursor: pointer; }
+  .fact-panel { padding: 12px 8px 16px; animation: fadeIn 0.3s ease; }
+  .fact-box { font-size: 12px; color: #a3a3a3; line-height: 1.6; background: #0a0a0b; border-radius: 10px; padding: 10px 12px; border: 1px solid #1e1e20; }
+
+  /* Name input */
+  .name-input { width: 100%; padding: 14px 16px; font-size: 16px; font-weight: 600; background: #161618; border: 1px solid #333; border-radius: 12px; color: #f5f5f5; outline: none; font-family: inherit; text-align: center; }
+  .name-input:focus { border-color: #6366f1; }
+  .name-input::placeholder { color: #525252; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen active" style="align-items:center;justify-content:center;padding:40px 24px;">
+    <div style="width:88px;height:88px;border-radius:22px;background:linear-gradient(135deg,#f5f5f5,#a3a3a3);display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 8px 32px rgba(255,255,255,0.08)">
+      <span style="font-size:38px;font-weight:800;color:#0a0a0b;letter-spacing:-2px">R7</span>
+    </div>
+    <h1 style="font-size:42px;font-weight:800;letter-spacing:-1.5px;margin-bottom:8px;background:linear-gradient(135deg,#fff,#a3a3a3);-webkit-background-clip:text;-webkit-text-fill-color:transparent">R7</h1>
+    <p style="font-size:16px;color:#737373;margin-bottom:32px;letter-spacing:3px;text-transform:uppercase;font-weight:500">7 Rounds · 1 Minute · 1 Winner</p>
+    <input type="text" class="name-input" id="player-name" placeholder="Your name" maxlength="20" style="max-width:280px;margin-bottom:24px">
+    <button class="btn-primary" onclick="goToTopics()" style="max-width:320px">Play Now</button>
+    <div style="display:flex;gap:32px;margin-top:56px;color:#525252;font-size:13px;font-weight:500">
+      <div style="text-align:center"><div id="topic-count" style="font-size:24px;font-weight:800;color:#d4d4d4;margin-bottom:4px">20</div>Topics</div>
+      <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:#d4d4d4;margin-bottom:4px">7</div>Rounds</div>
+      <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:#d4d4d4;margin-bottom:4px">60s</div>Per Match</div>
+    </div>
+  </div>
+
+  <!-- TOPICS -->
+  <div id="screen-topics" class="screen" style="padding:20px 16px">
+    <div style="display:flex;align-items:center;margin-bottom:24px;padding:0 4px">
+      <button onclick="showScreen('home')" style="background:none;color:#737373;font-size:15px;padding:8px 0;font-weight:600">← Back</button>
+      <h2 style="flex:1;text-align:center;font-size:18px;font-weight:700">Pick Your Battle</h2>
+      <div style="width:48px"></div>
+    </div>
+    <div id="topic-list" class="topic-grid"></div>
+  </div>
+
+  <!-- WAITING -->
+  <div id="screen-waiting" class="screen" style="align-items:center;justify-content:center;padding:40px 24px">
+    <div id="wait-icon" style="font-size:48px;margin-bottom:16px"></div>
+    <h2 id="wait-topic" style="font-size:22px;font-weight:700;margin-bottom:4px"></h2>
+    <p id="wait-room" style="font-size:14px;color:#a3a3a3;margin-bottom:32px;font-weight:600"></p>
+    <button id="share-btn" onclick="shareInvite()" class="btn-secondary" style="width:100%;max-width:300px;margin-bottom:16px">📤 Share Invite Link</button>
+    <div id="player-list" style="width:100%;max-width:300px;background:#161618;border-radius:12px;padding:20px;margin-top:16px;border:1px solid #262626"></div>
+    <button id="start-btn" onclick="startGame()" class="btn-primary" style="max-width:300px;margin-top:24px;display:none">Start Battle ⚡</button>
+    <button onclick="leaveRoom()" style="background:none;color:#525252;font-size:13px;margin-top:20px;font-weight:500">Cancel</button>
+  </div>
+
+  <!-- RULES POPUP (overlays waiting screen) -->
+  <div id="rules-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;padding:24px;align-items:center;justify-content:center">
+    <div style="background:#161618;border-radius:20px;padding:28px 24px;max-width:340px;width:100%;border:1px solid #262626">
+      <h3 style="font-size:20px;font-weight:800;margin-bottom:20px;text-align:center">⚡ How Scoring Works</h3>
+      <div style="display:flex;flex-direction:column;gap:14px" id="rules-content"></div>
+      <button class="btn-primary" onclick="dismissRules()" style="margin-top:20px">Let's Go! 🚀</button>
+    </div>
+  </div>
+
+  <!-- COUNTDOWN -->
+  <div id="screen-countdown" class="screen" style="align-items:center;justify-content:center;padding:40px">
+    <p style="font-size:14px;color:#737373;margin-bottom:16px;font-weight:600;letter-spacing:2px;text-transform:uppercase">Get Ready</p>
+    <div id="countdown-num" style="font-size:120px;font-weight:800;color:#f5f5f5;animation:countPulse 1s ease infinite;line-height:1"></div>
+    <p id="countdown-vs" style="font-size:15px;color:#525252;margin-top:24px"></p>
+  </div>
+
+  <!-- PLAYING -->
+  <div id="screen-playing" class="screen">
+    <div class="score-header">
+      <div><div class="score-name" id="p1-name">You</div><div class="score-value" id="p1-score">0</div></div>
+      <div style="text-align:center"><div id="round-label" style="font-size:11px;color:#737373;font-weight:700;letter-spacing:2px;text-transform:uppercase"></div></div>
+      <div style="text-align:right"><div class="score-name" id="p2-name">Opponent</div><div class="score-value" id="p2-score">0</div></div>
+    </div>
+    <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+    <div id="question-box" style="background:#161618;border-radius:16px;padding:24px 20px;margin-bottom:12px;border:1px solid #262626;min-height:80px;display:flex;align-items:center;justify-content:center">
+      <p id="question-text" style="font-size:18px;font-weight:600;line-height:1.5;text-align:center"></p>
+    </div>
+    <div style="text-align:center;margin-bottom:12px"><span id="diff-badge" class="diff-badge"></span></div>
+    <div id="options-container" class="options-grid" style="opacity:0;transform:translateY(12px);pointer-events:none"></div>
+    <div id="play-status" style="text-align:center;margin-top:16px;font-size:13px;color:#525252;font-weight:500"></div>
+    <div id="round-result" style="text-align:center;margin-top:14px;display:none;animation:fadeIn 0.3s ease"></div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="screen-gameover" class="screen" style="align-items:center;padding:24px 20px;overflow-y:auto">
+    <div id="go-emoji" style="font-size:48px;margin-bottom:8px"></div>
+    <h2 id="go-title" style="font-size:28px;font-weight:800;margin-bottom:4px;letter-spacing:-1px"></h2>
+    <p id="go-subtitle" style="font-size:14px;color:#737373;margin-bottom:20px"></p>
+    <div id="go-scores" style="display:flex;width:100%;max-width:320px;gap:12px;margin-bottom:20px"></div>
+    <div id="go-breakdown" style="width:100%;max-width:320px;background:#161618;border:1px solid #262626;border-radius:14px;padding:16px;margin-bottom:20px"></div>
+    <div style="display:flex;gap:10px;width:100%;max-width:320px;margin-bottom:16px">
+      <button class="btn-primary" onclick="requestRematch()" style="flex:1;padding:16px;font-size:15px">Rematch ⚡</button>
+      <button class="btn-secondary" onclick="newTopic()" style="flex:1;padding:16px;font-size:15px">New Topic</button>
+    </div>
+  </div>
+
+  <!-- JOIN (when opening an invite link) -->
+  <div id="screen-join" class="screen" style="align-items:center;justify-content:center;padding:40px 24px">
+    <div id="join-icon" style="font-size:48px;margin-bottom:16px"></div>
+    <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">You've Been Challenged!</h2>
+    <p id="join-topic" style="font-size:16px;color:#a3a3a3;margin-bottom:4px;font-weight:600"></p>
+    <p id="join-room" style="font-size:14px;color:#525252;margin-bottom:32px"></p>
+    <input type="text" class="name-input" id="join-name" placeholder="Your name" maxlength="20" style="max-width:280px;margin-bottom:24px">
+    <button class="btn-primary" onclick="joinFromLink()" style="max-width:320px">Accept Challenge ⚡</button>
+  </div>
+
+  <!-- ERROR -->
+  <div id="screen-error" class="screen" style="align-items:center;justify-content:center;padding:40px 24px">
+    <div style="font-size:48px;margin-bottom:16px">😕</div>
+    <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">Room Not Found</h2>
+    <p style="font-size:14px;color:#737373;margin-bottom:32px;text-align:center">This room may have expired or the game already started.</p>
+    <button class="btn-primary" onclick="goHome()" style="max-width:320px">Create Your Own Game</button>
+  </div>
+
+  <!-- DISCONNECTED -->
+  <div id="screen-disconnected" class="screen" style="align-items:center;justify-content:center;padding:40px 24px">
+    <div style="font-size:48px;margin-bottom:16px">📡</div>
+    <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">Opponent Disconnected</h2>
+    <p style="font-size:14px;color:#737373;margin-bottom:32px">Your opponent left the game.</p>
+    <button class="btn-primary" onclick="goHome()" style="max-width:320px">Back to Home</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ─── State ──────────────────────────────────────────────────────
+let socket = null;
+let state = {
+  playerName: '',
+  playerIndex: -1,
+  roomId: null,
+  roomName: '',
+  topic: '',
+  icon: '',
+  players: [],
+  scores: [0, 0],
+  currentRound: 0,
+  totalRounds: 7,
+  isFinal: false,
+  selectedAnswer: null,
+  opponentAnswered: false,
+  timerInterval: null,
+  timeLeft: 10,
+  optionsRevealed: false,
+  roundHistory: [],
+  gameOverData: null,
+};
+
+// ─── Socket Setup ───────────────────────────────────────────────
+function connectSocket() {
+  if (socket && socket.connected) return;
+  socket = io({ reconnection: true, reconnectionAttempts: 5, reconnectionDelay: 1000 });
+
+  socket.on('room-update', (data) => {
+    state.players = data.players;
+    state.roomName = data.roomName;
+    state.topic = data.topic;
+    state.icon = data.icon;
+    renderWaitingRoom();
+  });
+
+  socket.on('room-ready', () => {
+    document.getElementById('start-btn').style.display = 'block';
+  });
+
+  socket.on('game-countdown', () => {
+    showScreen('countdown');
+    let c = 3;
+    document.getElementById('countdown-num').textContent = c;
+    document.getElementById('countdown-vs').textContent = `${state.players[0]?.name || 'Player 1'} vs ${state.players[1]?.name || 'Player 2'}`;
+    const iv = setInterval(() => {
+      c--;
+      document.getElementById('countdown-num').textContent = c || 'GO!';
+      if (c <= 0) { clearInterval(iv); }
+    }, 1000);
+  });
+
+  socket.on('round-start', (data) => {
+    showScreen('playing');
+    state.currentRound = data.round;
+    state.totalRounds = data.totalRounds;
+    state.isFinal = data.isFinal;
+    state.selectedAnswer = null;
+    state.opponentAnswered = false;
+    state.optionsRevealed = false;
+    state.timeLeft = 10;
+    clearInterval(state.timerInterval);
+
+    // Update UI
+    const p1 = state.players[state.playerIndex] || { name: 'You' };
+    const p2 = state.players[1 - state.playerIndex] || { name: 'Opponent' };
+    document.getElementById('p1-name').textContent = p1.name;
+    document.getElementById('p2-name').textContent = p2.name;
+    document.getElementById('p1-score').textContent = state.scores[state.playerIndex];
+    document.getElementById('p2-score').textContent = state.scores[1 - state.playerIndex];
+
+    const rl = document.getElementById('round-label');
+    rl.textContent = data.isFinal ? '🔥 FINAL · 2×' : `Round ${data.round}/${data.totalRounds}`;
+    rl.style.color = data.isFinal ? '#eab308' : '#737373';
+
+    document.getElementById('question-text').textContent = data.question;
+    const qbox = document.getElementById('question-box');
+    qbox.style.border = data.isFinal ? '1px solid #854d0e' : '1px solid #262626';
+
+    const db = document.getElementById('diff-badge');
+    const dlabels = { 1: 'EASY', 2: 'MEDIUM', 3: 'HARD', 4: '🔥 TRUE FAN' };
+    const dbg = { 1: '#1a1a1c', 2: '#1a1a1c', 3: '#713f12', 4: '#7c2d12' };
+    const dcol = { 1: '#737373', 2: '#737373', 3: '#eab308', 4: '#fb923c' };
+    const dbrd = { 1: '#262626', 2: '#262626', 3: '#854d0e', 4: '#9a3412' };
+    db.textContent = dlabels[data.difficulty] || 'MEDIUM';
+    db.style.background = dbg[data.difficulty]; db.style.color = dcol[data.difficulty]; db.style.border = `1px solid ${dbrd[data.difficulty]}`;
+
+    // Hide options initially
+    const oc = document.getElementById('options-container');
+    oc.innerHTML = '';
+    oc.style.opacity = '0'; oc.style.transform = 'translateY(12px)'; oc.style.pointerEvents = 'none';
+
+    document.getElementById('play-status').innerHTML = '<span style="animation:pulse 1s infinite">Read the question... options coming!</span>';
+    document.getElementById('round-result').style.display = 'none';
+    document.getElementById('timer-fill').style.width = '100%';
+    document.getElementById('timer-fill').style.backgroundColor = '#525252';
+  });
+
+  socket.on('options-reveal', (data) => {
+    state.optionsRevealed = true;
+    const oc = document.getElementById('options-container');
+    oc.innerHTML = '';
+    data.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option-tile';
+      btn.innerHTML = `<span class="option-label">${String.fromCharCode(65 + i)}</span><span style="line-height:1.3">${opt}</span>`;
+      btn.onclick = () => submitAnswer(i);
+      btn.id = `opt-${i}`;
+      oc.appendChild(btn);
+    });
+    oc.style.opacity = '1'; oc.style.transform = 'translateY(0)'; oc.style.pointerEvents = 'auto';
+    document.getElementById('play-status').textContent = '';
+
+    // Start timer
+    state.timeLeft = 10;
+    updateTimer();
+    state.timerInterval = setInterval(() => {
+      state.timeLeft -= 0.1;
+      if (state.timeLeft <= 0) {
+        state.timeLeft = 0;
+        clearInterval(state.timerInterval);
+      }
+      updateTimer();
+    }, 100);
+  });
+
+  socket.on('opponent-answered', () => {
+    state.opponentAnswered = true;
+    if (state.selectedAnswer !== null) return;
+    // Show subtle indicator
+  });
+
+  socket.on('round-result', (data) => {
+    clearInterval(state.timerInterval);
+    state.scores[0] = data.scores[0];
+    state.scores[1] = data.scores[1];
+
+    const myResult = data.results[state.playerIndex];
+    const opResult = data.results[1 - state.playerIndex];
+
+    // Update scores
+    document.getElementById('p1-score').textContent = data.scores[state.playerIndex];
+    document.getElementById('p2-score').textContent = data.scores[1 - state.playerIndex];
+
+    // Highlight correct/wrong answers
+    const oc = document.getElementById('options-container');
+    oc.style.pointerEvents = 'none';
+    for (let i = 0; i < 4; i++) {
+      const btn = document.getElementById(`opt-${i}`);
+      if (!btn) continue;
+      btn.classList.remove('selected', 'correct', 'wrong', 'dimmed');
+      if (i === data.correctAnswer) {
+        btn.classList.add('correct');
+      } else if (i === myResult.answerIndex) {
+        btn.classList.add('wrong');
+      } else {
+        btn.classList.add('dimmed');
+      }
+      // Show who answered what
+      const labels = [];
+      if (myResult.answerIndex === i) labels.push('You');
+      if (opResult.answerIndex === i) labels.push(state.players[1 - state.playerIndex]?.name || 'Opponent');
+      if (labels.length) {
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'font-size:10px;color:#737373;margin-top:5px;font-weight:600';
+        lbl.textContent = labels.join(' + ');
+        btn.appendChild(lbl);
+      }
+    }
+
+    // Show result text
+    const rr = document.getElementById('round-result');
+    rr.style.display = 'block';
+    const myPts = myResult.points;
+    const opPts = opResult.points;
+    if (myPts > opPts) {
+      rr.innerHTML = `<span style="color:#4ade80;font-weight:700;font-size:15px">+${myPts} pts ${state.isFinal ? '🔥' : '🎯'}</span>`;
+    } else if (myPts < opPts) {
+      rr.innerHTML = `<span style="color:#f87171;font-weight:700;font-size:15px">${state.players[1 - state.playerIndex]?.name} was faster!</span>`;
+    } else if (myPts === 0 && opPts === 0) {
+      rr.innerHTML = `<span style="color:#737373;font-weight:700;font-size:15px">Both wrong!</span>`;
+    } else {
+      rr.innerHTML = `<span style="color:#eab308;font-weight:700;font-size:15px">Tied!</span>`;
+    }
+
+    document.getElementById('play-status').textContent = '';
+  });
+
+  socket.on('game-over', (data) => {
+    state.gameOverData = data;
+    state.roundHistory = data.roundHistory;
+    renderGameOver(data);
+    showScreen('gameover');
+  });
+
+  socket.on('player-disconnected', (data) => {
+    showScreen('disconnected');
+  });
+
+  socket.on('rematch-ready', (data) => {
+    state.players = data.players;
+    state.scores = [0, 0];
+    state.roundHistory = [];
+    document.getElementById('start-btn').style.display = 'block';
+    showScreen('waiting');
+    renderWaitingRoom();
+  });
+
+  socket.on('error', (data) => {
+    if (data.message === 'Room not found or expired') showScreen('error');
+    else alert(data.message);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Disconnected from server');
+  });
+}
+
+// ─── Navigation ─────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(`screen-${id}`);
+  if (el) { el.classList.add('active'); el.style.animation = 'none'; el.offsetHeight; el.style.animation = 'fadeIn 0.4s ease'; }
+}
+
+function goHome() {
+  if (socket) socket.disconnect();
+  state.roomId = null;
+  window.history.pushState({}, '', '/');
+  showScreen('home');
+}
+
+function goToTopics() {
+  state.playerName = document.getElementById('player-name').value.trim() || 'Player';
+  loadTopics();
+  showScreen('topics');
+}
+
+// ─── Topics ─────────────────────────────────────────────────────
+async function loadTopics() {
+  try {
+    const res = await fetch('/api/topics');
+    const topics = await res.json();
+    const grid = document.getElementById('topic-list');
+    grid.innerHTML = '';
+    document.getElementById('topic-count').textContent = topics.length;
+    topics.forEach((t, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'topic-card';
+      btn.style.animation = `slideUp 0.4s ease ${i * 0.03}s both`;
+      btn.innerHTML = `<span class="icon">${t.icon}</span><span class="name">${t.name}</span><span class="count">${t.questionCount} Q's</span>`;
+      btn.onclick = () => createRoom(t.name);
+      grid.appendChild(btn);
+    });
+  } catch (e) { console.error(e); }
+}
+
+// ─── Room Creation ──────────────────────────────────────────────
+async function createRoom(topic) {
+  try {
+    const res = await fetch(`/api/create-room/${encodeURIComponent(topic)}`);
+    const data = await res.json();
+    state.roomId = data.roomId;
+    state.roomName = data.roomName;
+    state.topic = topic;
+    state.icon = data.icon;
+    state.scores = [0, 0];
+
+    window.history.pushState({}, '', `/play/${data.roomId}`);
+
+    connectSocket();
+    socket.emit('join-room', { roomId: data.roomId, name: state.playerName });
+    state.playerIndex = 0;
+
+    showScreen('waiting');
+  } catch (e) { console.error(e); }
+}
+
+// ─── Waiting Room ───────────────────────────────────────────────
+function renderWaitingRoom() {
+  document.getElementById('wait-icon').textContent = state.icon;
+  document.getElementById('wait-topic').textContent = state.topic;
+  document.getElementById('wait-room').textContent = `🏟️ ${state.roomName}`;
+
+  const pl = document.getElementById('player-list');
+  pl.innerHTML = state.players.map(p => `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${state.players.length > 1 ? '0' : '16px'}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;background:#262626;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">${p.name[0]}</div>
+        <span style="font-size:14px;font-weight:600">${p.name}${p.index === state.playerIndex ? ' (You)' : ''}</span>
+      </div>
+      <span style="font-size:12px;color:#22c55e;font-weight:600">● Ready</span>
+    </div>
+  `).join('');
+
+  if (state.players.length < 2) {
+    pl.innerHTML += `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1a1a1c;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:1px dashed #333">?</div>
+          <span style="font-size:14px;font-weight:600;color:#525252">Waiting for opponent...</span>
+        </div>
+        <span style="font-size:12px;color:#525252;animation:pulse 1.5s infinite">⏳</span>
+      </div>`;
+  }
+
+  const sb = document.getElementById('share-btn');
+  sb.style.borderColor = '#333';
+  sb.style.background = '#1a1a1c';
+  sb.textContent = '📤 Share Invite Link';
+}
+
+function shareInvite() {
+  const url = `${window.location.origin}/play/${state.roomId}`;
+  const msg = `⚡ I challenge you to R7!\n\n🎯 Topic: ${state.topic}\n🏟️ Room: ${state.roomName}\n\nBeat me if you can 👇\n${url}`;
+
+  const btn = document.getElementById('share-btn');
+
+  if (navigator.share) {
+    navigator.share({ title: 'R7 Challenge', text: msg, url }).catch(() => fallbackCopy(msg, btn));
+  } else {
+    fallbackCopy(msg, btn);
+  }
+}
+
+function fallbackCopy(text, btn) {
+  navigator.clipboard.writeText(text).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  });
+  btn.textContent = '✓ Copied! Paste in WhatsApp';
+  btn.style.borderColor = '#22c55e';
+  btn.style.background = '#052e16';
+  setTimeout(() => {
+    btn.textContent = '📤 Share Invite Link';
+    btn.style.borderColor = '#333';
+    btn.style.background = '#1a1a1c';
+  }, 3000);
+}
+
+// ─── Start Game ─────────────────────────────────────────────────
+function startGame() {
+  // Show rules first
+  const rc = document.getElementById('rules-content');
+  rc.innerHTML = [
+    ['🎯', 'Correct Answer', '100 base points'],
+    ['⚡', 'Speed Bonus', 'Up to +100 — faster = more'],
+    ['🔥', 'Final Round = 2×', 'Round 7 is worth double!'],
+    ['👀', 'Read Fast', 'Question first — options after 1 sec'],
+  ].map(([ico, t, d]) => `
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <span style="font-size:20px;flex-shrink:0">${ico}</span>
+      <div><div style="font-size:14px;font-weight:700;margin-bottom:2px">${t}</div><div style="font-size:13px;color:#a3a3a3">${d}</div></div>
+    </div>
+  `).join('');
+  document.getElementById('rules-popup').style.display = 'flex';
+}
+
+function dismissRules() {
+  document.getElementById('rules-popup').style.display = 'none';
+  socket.emit('start-game');
+}
+
+// ─── Playing ────────────────────────────────────────────────────
+function submitAnswer(idx) {
+  if (state.selectedAnswer !== null || !state.optionsRevealed) return;
+  state.selectedAnswer = idx;
+
+  // Visual feedback
+  const btn = document.getElementById(`opt-${idx}`);
+  if (btn) btn.classList.add('selected');
+  document.getElementById('options-container').style.pointerEvents = 'none';
+
+  const p2name = state.players[1 - state.playerIndex]?.name || 'Opponent';
+  if (!state.opponentAnswered) {
+    document.getElementById('play-status').innerHTML = `<span style="animation:pulse 1.5s infinite">Waiting for ${p2name}...</span>`;
+  }
+
+  socket.emit('submit-answer', { answerIndex: idx, timestamp: Date.now() });
+}
+
+function updateTimer() {
+  const pct = (state.timeLeft / 10) * 100;
+  const fill = document.getElementById('timer-fill');
+  fill.style.width = `${Math.max(0, pct)}%`;
+  fill.style.backgroundColor = state.timeLeft > 5 ? '#22c55e' : state.timeLeft > 2.5 ? '#eab308' : '#ef4444';
+}
+
+// ─── Game Over ──────────────────────────────────────────────────
+function renderGameOver(data) {
+  const myIdx = state.playerIndex;
+  const opIdx = 1 - myIdx;
+  const myScore = data.scores[myIdx];
+  const opScore = data.scores[opIdx];
+  const myName = data.players[myIdx]?.name || 'You';
+  const opName = data.players[opIdx]?.name || 'Opponent';
+  const won = myScore > opScore;
+  const lost = myScore < opScore;
+
+  document.getElementById('go-emoji').textContent = won ? '🏆' : lost ? '💪' : '🤝';
+  const title = document.getElementById('go-title');
+  title.textContent = won ? 'Victory!' : lost ? 'Close One!' : 'Draw!';
+  title.style.background = won ? 'linear-gradient(135deg,#4ade80,#22c55e)' : lost ? 'linear-gradient(135deg,#94a3b8,#64748b)' : 'linear-gradient(135deg,#eab308,#f59e0b)';
+  title.style.WebkitBackgroundClip = 'text'; title.style.WebkitTextFillColor = 'transparent';
+  document.getElementById('go-subtitle').textContent = `${state.topic} · ${state.roomName}`;
+
+  document.getElementById('go-scores').innerHTML = [
+    [myName, myScore, myScore >= opScore],
+    [opName, opScore, opScore > myScore],
+  ].map(([n, s, w]) => `
+    <div style="flex:1;background:${w ? '#0a1f0a' : '#161618'};border:1px solid ${w ? '#166534' : '#262626'};border-radius:14px;padding:14px;text-align:center">
+      <div style="font-size:12px;color:#737373;font-weight:600;margin-bottom:4px">${n}</div>
+      <div style="font-size:30px;font-weight:800;letter-spacing:-1px;color:${w ? '#4ade80' : '#e5e5e5'}">${s}</div>
+    </div>
+  `).join('');
+
+  // Round breakdown
+  const bd = document.getElementById('go-breakdown');
+  bd.innerHTML = `
+    <div style="font-size:12px;color:#737373;font-weight:600;margin-bottom:4px;letter-spacing:1px;text-transform:uppercase">Round Breakdown</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;padding:6px 10px;background:#0a0a0b;border-radius:8px;border:1px solid #1e1e20">
+      <span style="font-size:14px">💡</span>
+      <span style="font-size:12px;color:#a3a3a3;font-weight:500">Tap any round to see a fun fact!</span>
+    </div>
+    <div id="round-list"></div>
+  `;
+
+  const rl = document.getElementById('round-list');
+  data.roundHistory.forEach((rh, i) => {
+    const myR = rh.results[myIdx];
+    const opR = rh.results[opIdx];
+
+    const row = document.createElement('div');
+    row.innerHTML = `
+      <button class="round-row" style="border-bottom:1px solid #1e1e20" onclick="toggleFact(${i})">
+        <span style="font-size:13px;font-weight:700;color:${myR.correct ? '#4ade80' : '#ef4444'};width:48px;text-align:left">${myR.correct ? '+' + myR.points : '✗'}</span>
+        <span style="font-size:12px;color:${rh.isFinal ? '#eab308' : '#525252'};font-weight:600">${rh.isFinal ? '🔥 R7' : 'R' + (i + 1)} <span id="arrow-${i}">▸</span></span>
+        <span style="font-size:13px;font-weight:700;color:${opR.correct ? '#4ade80' : '#ef4444'};width:48px;text-align:right">${opR.correct ? '+' + opR.points : '✗'}</span>
+      </button>
+      <div id="fact-${i}" class="fact-panel" style="display:none;border-bottom:1px solid #1e1e20">
+        <div style="font-size:13px;font-weight:600;color:#d4d4d4;margin-bottom:6px">${rh.question}</div>
+        <div style="font-size:12px;font-weight:600;color:#4ade80;margin-bottom:8px">✓ ${rh.options[rh.correctAnswer]}</div>
+        <div class="fact-box">💡 ${rh.fact}</div>
+      </div>
+    `;
+    rl.appendChild(row);
+  });
+}
+
+function toggleFact(i) {
+  const el = document.getElementById(`fact-${i}`);
+  const arrow = document.getElementById(`arrow-${i}`);
+  if (!el) return;
+  const show = el.style.display === 'none';
+  el.style.display = show ? 'block' : 'none';
+  if (arrow) arrow.textContent = show ? '▼' : '▸';
+}
+
+// ─── Rematch / New Topic ────────────────────────────────────────
+function requestRematch() {
+  socket.emit('request-rematch');
+}
+
+function newTopic() {
+  if (socket) socket.disconnect();
+  state.roomId = null;
+  window.history.pushState({}, '', '/');
+  goToTopics();
+}
+
+function leaveRoom() {
+  if (socket) socket.disconnect();
+  state.roomId = null;
+  window.history.pushState({}, '', '/');
+  showScreen('topics');
+}
+
+// ─── Join From Invite Link ──────────────────────────────────────
+async function checkRoute() {
+  const path = window.location.pathname;
+  const match = path.match(/\/play\/([A-Z0-9]+)/i);
+  if (match) {
+    const roomId = match[1].toUpperCase();
+    try {
+      const res = await fetch(`/api/room/${roomId}`);
+      if (!res.ok) { showScreen('error'); return; }
+      const data = await res.json();
+      if (data.playerCount >= 2) { showScreen('error'); return; }
+
+      state.roomId = roomId;
+      state.topic = data.topic;
+      state.roomName = data.roomName;
+      state.icon = data.icon;
+
+      document.getElementById('join-icon').textContent = data.icon;
+      document.getElementById('join-topic').textContent = `🎯 ${data.topic}`;
+      document.getElementById('join-room').textContent = `🏟️ ${data.roomName}`;
+      showScreen('join');
+    } catch (e) { showScreen('error'); }
+  }
+}
+
+function joinFromLink() {
+  state.playerName = document.getElementById('join-name').value.trim() || 'Player';
+  state.playerIndex = 1;
+  connectSocket();
+  socket.emit('join-room', { roomId: state.roomId, name: state.playerName });
+  showScreen('waiting');
+}
+
+// ─── Init ───────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Restore name from localStorage if available
+  try {
+    const saved = localStorage.getItem('r7_name');
+    if (saved) { document.getElementById('player-name').value = saved; }
+  } catch (e) {}
+
+  // Save name on change
+  document.getElementById('player-name').addEventListener('change', (e) => {
+    try { localStorage.setItem('r7_name', e.target.value); } catch (e) {}
+  });
+
+  checkRoute();
+});
+
+// Handle back button
+window.addEventListener('popstate', () => {
+  const path = window.location.pathname;
+  if (path === '/') goHome();
+  else checkRoute();
+});
+</script>
+</body>
+</html>
