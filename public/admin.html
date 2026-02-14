@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R7 — Product Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0c;
+  --surface: #111114;
+  --surface2: #18181c;
+  --border: #222228;
+  --border2: #2a2a32;
+  --text: #e4e4e8;
+  --text2: #8a8a96;
+  --text3: #56566a;
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --green: #22c55e;
+  --green-bg: #052e16;
+  --green-border: #166534;
+  --red: #ef4444;
+  --red-bg: #1c0a0a;
+  --red-border: #7f1d1d;
+  --yellow: #eab308;
+  --yellow-bg: #1a1500;
+  --yellow-border: #854d0e;
+  --blue: #3b82f6;
+  --blue-bg: #0c1a3a;
+  --blue-border: #1e40af;
+  --orange: #f97316;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  line-height: 1.5;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* ─── Header ─────────────────────────────────────────── */
+.header {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.header h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header h1 .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  display: inline-block;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.header p {
+  color: var(--text3);
+  font-size: 13px;
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── Controls ───────────────────────────────────────── */
+.controls {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.controls button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.controls button:hover {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: var(--border2);
+}
+.controls button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.controls .spacer { flex: 1; }
+.controls .survey-btn {
+  background: var(--blue-bg);
+  border-color: var(--blue-border);
+  color: var(--blue);
+}
+.controls .survey-btn:hover {
+  background: #0f2050;
+}
+
+/* ─── Section Titles ─────────────────────────────────── */
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text3);
+  margin-bottom: 12px;
+  margin-top: 36px;
+}
+.section-label:first-of-type { margin-top: 0; }
+
+/* ─── North Star Cards ───────────────────────────────── */
+.north-stars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ns-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.ns-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.ns-card.ns-completion::before { background: var(--accent); }
+.ns-card.ns-retention::before { background: var(--orange); }
+.ns-card.ns-growth::before { background: var(--green); }
+.ns-card .ns-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+.ns-card .ns-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+.ns-card .ns-sub {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+.ns-card .ns-benchmark {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.ns-card .ns-benchmark span {
+  color: var(--text2);
+}
+
+/* ─── Insights Panel ─────────────────────────────────── */
+.insights-panel {
+  margin-bottom: 8px;
+}
+.insight-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 8px;
+  border-left: 3px solid var(--border);
+}
+.insight-card.critical { border-left-color: var(--red); background: var(--red-bg); }
+.insight-card.warning { border-left-color: var(--yellow); background: var(--yellow-bg); }
+.insight-card.healthy { border-left-color: var(--green); background: var(--green-bg); }
+.insight-card.info { border-left-color: var(--blue); background: var(--blue-bg); }
+
+.insight-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.insight-header .icon { font-size: 16px; }
+.insight-header .title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.insight-detail {
+  color: var(--text2);
+  font-size: 13px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.insight-action {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent2);
+  padding: 8px 12px;
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 6px;
+  line-height: 1.5;
+}
+.insight-action::before {
+  content: '→ ';
+  opacity: 0.6;
+}
+
+/* ─── Metric Panels ──────────────────────────────────── */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+@media (max-width: 768px) {
+  .panels { grid-template-columns: 1fr; }
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.panel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel.full-width {
+  grid-column: 1 / -1;
+}
+
+/* ─── Data Table ─────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th {
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+  padding: 6px 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text2);
+}
+tr:last-child td { border-bottom: none; }
+td.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+/* ─── Tags ───────────────────────────────────────────── */
+.tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-block;
+}
+.tag-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.tag-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.tag-yellow { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow-border); }
+.tag-blue { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+
+/* ─── Bar Chart ──────────────────────────────────────── */
+.bar-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bar {
+  flex: 1;
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.bar-fill.purple { background: var(--accent); }
+.bar-fill.green { background: var(--green); }
+.bar-fill.red { background: var(--red); }
+.bar-fill.yellow { background: var(--yellow); }
+.bar-fill.blue { background: var(--blue); }
+.bar-fill.orange { background: var(--orange); }
+.bar-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ─── Mini Stats Row ─────────────────────────────────── */
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.mini-stat {
+  text-align: center;
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: 8px;
+}
+.mini-stat .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 800;
+}
+.mini-stat .lbl {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+/* ─── Round Analysis Visual ──────────────────────────── */
+.round-flow {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 120px;
+  margin-top: 12px;
+}
+.round-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+.round-bar .fill {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  transition: height 0.5s ease;
+  min-height: 4px;
+}
+.round-bar .r-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 6px;
+}
+.round-bar .r-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+
+/* ─── Survey Section ─────────────────────────────────── */
+#survey-content {
+  display: none;
+}
+
+/* ─── Empty State ────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text3);
+  font-size: 14px;
+}
+.empty-state .big { font-size: 36px; margin-bottom: 12px; }
+
+/* ─── Loading ────────────────────────────────────────── */
+.loading {
+  text-align: center;
+  color: var(--text3);
+  padding: 60px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+
+/* ─── Refresh FAB ────────────────────────────────────── */
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .15s;
+}
+.fab:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  transform: rotate(180deg);
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="dot"></span> R7 Product Intelligence</h1>
+  <p>understand player behaviour → find what's broken → fix it → grow</p>
+</div>
+
+<div class="controls">
+  <button onclick="loadStats(1)" id="btn-1d">Today</button>
+  <button onclick="loadStats(7)" id="btn-7d">7 Days</button>
+  <button class="active" onclick="loadStats(30)" id="btn-30d">30 Days</button>
+  <button onclick="loadStats(365)" id="btn-365d">All Time</button>
+  <div class="spacer"></div>
+  <button class="survey-btn" onclick="loadSurveys()" id="btn-survey">📋 Surveys</button>
+</div>
+
+<div id="content"><div class="loading">loading intelligence...</div></div>
+<div id="survey-content"></div>
+
+<button class="fab" onclick="location.reload()">↻</button>
+
+<script>
+let currentDays = 30;
+
+async function loadStats(days) {
+  currentDays = days;
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  const btnId = days === 365 ? '365d' : `${days}d`;
+  document.getElementById(`btn-${btnId}`).classList.add('active');
+  document.getElementById('survey-content').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+
+  try {
+    const res = await fetch(`/api/admin/stats?days=${days}`);
+    const d = await res.json();
+    renderDashboard(d);
+  } catch (e) {
+    document.getElementById('content').innerHTML = '<div class="loading">Failed to load data.</div>';
+  }
+}
+
+function renderDashboard(d) {
+  const c = document.getElementById('content');
+  let html = '';
+
+  // ─── NORTH STAR METRICS ───────────────────────────────
+  html += '<div class="section-label">⭐ North Star Metrics</div>';
+  html += '<div class="north-stars">';
+
+  const ns = d.northStars || {};
+  const cr = d.completionRate || 0;
+  const agpp = d.avgGamesPerPlayer || 0;
+  const rr = d.repeatRate || 0;
+
+  html += `
+    <div class="ns-card ns-completion">
+      <div class="ns-label">Completion Rate</div>
+      <div class="ns-value" style="color:${cr >= 75 ? 'var(--green)' : cr >= 50 ? 'var(--yellow)' : 'var(--red)'}">${cr}%</div>
+      <div class="ns-sub">${d.gamesCompleted || 0} of ${d.gamesStarted || 0} games finished</div>
+      <div class="ns-benchmark">Target: <span>≥75%</span> · Great: <span>≥85%</span></div>
+    </div>`;
+
+  html += `
+    <div class="ns-card ns-retention">
+      <div class="ns-label">Games / Player</div>
+      <div class="ns-value" style="color:${agpp >= 3 ? 'var(--green)' : agpp >= 1.5 ? 'var(--yellow)' : 'var(--red)'}">${agpp}</div>
+      <div class="ns-sub">${rr}% of players return for 2+ games</div>
+      <div class="ns-benchmark">Target: <span>≥2.0</span> · Great: <span>≥4.0</span></div>
+    </div>`;
+
+  const shareRate = ns.shareToJoinRate || 0;
+  html += `
+    <div class="ns-card ns-growth">
+      <div class="ns-label">Share → Join Rate</div>
+      <div class="ns-value" style="color:${shareRate >= 30 ? 'var(--green)' : shareRate >= 15 ? 'var(--yellow)' : 'var(--text3)'}">${d.inviteShares > 0 ? shareRate + '%' : '—'}</div>
+      <div class="ns-sub">${d.inviteShares || 0} shared · ${d.inviteOpens || 0} opened</div>
+      <div class="ns-benchmark">Target: <span>≥25%</span> · Great: <span>≥40%</span></div>
+    </div>`;
+
+  html += '</div>';
+
+  // ─── INSIGHTS ─────────────────────────────────────────
+  const insights = d.insights || [];
+  if (insights.length > 0) {
+    html += '<div class="section-label">🧠 Insights & Actions</div>';
+    html += '<div class="insights-panel">';
+    insights.forEach(i => {
+      html += `
+        <div class="insight-card ${i.type}">
+          <div class="insight-header">
+            <span class="icon">${i.icon}</span>
+            <span class="title">${i.title}</span>
+          </div>
+          <div class="insight-detail">${i.detail}</div>
+          <div class="insight-action">${i.action}</div>
+        </div>`;
+    });
+    html += '</div>';
+  }
+
+  // ─── CORE NUMBERS ─────────────────────────────────────
+  html += '<div class="section-label">📊 Core Numbers</div>';
+  html += '<div class="mini-stats">';
+  html += miniStat(d.gamesStarted || 0, 'Games Started');
+  html += miniStat(d.uniquePlayers || 0, 'Unique Players');
+  html += miniStat(d.botGames || 0, 'Bot Games');
+  html += miniStat(d.multiGames || 0, 'Multiplayer');
+  html += miniStat(d.rematches || 0, 'Rematches');
+  html += miniStat(d.timeouts || 0, 'Bot Timeouts');
+  html += '</div>';
+
+  // ─── GAMES PER DAY ────────────────────────────────────
+  const days = d.gamesByDay || {};
+  const dayEntries = Object.entries(days).sort((a, b) => a[0].localeCompare(b[0]));
+  if (dayEntries.length > 0) {
+    const maxGames = Math.max(...dayEntries.map(e => e[1]), 1);
+    html += '<div class="section-label">📈 Games Per Day</div>';
+    html += '<div class="panel full-width" style="margin-bottom:8px">';
+    html += '<div class="round-flow" style="height:80px">';
+    dayEntries.forEach(([date, count]) => {
+      const pct = (count / maxGames) * 100;
+      const shortDate = date.slice(5); // MM-DD
+      html += `
+        <div class="round-bar">
+          <div class="r-value">${count}</div>
+          <div class="fill" style="height:${pct}%;background:var(--accent)"></div>
+          <div class="r-label">${shortDate}</div>
+        </div>`;
+    });
+    html += '</div></div>';
+  }
+
+  // ─── TOPIC ANALYSIS + ROUND ANALYSIS ──────────────────
+  html += '<div class="section-label">🔍 Deep Dive</div>';
+  html += '<div class="panels">';
+
+  // Topic Performance
+  const topics = d.topicStats || [];
+  html += '<div class="panel">';
+  html += '<div class="panel-title">🏷️ Topic Performance</div>';
+  if (topics.length === 0) {
+    html += '<div class="empty-state">No topic data yet</div>';
+  } else {
+    const maxStarts = Math.max(...topics.map(t => t.starts), 1);
+    html += '<table><tr><th>Topic</th><th>Played</th><th>Completion</th><th></th></tr>';
+    topics.forEach(t => {
+      const crTag = t.completionRate >= 75 ? 'tag-green' : t.completionRate >= 50 ? 'tag-yellow' : 'tag-red';
+      html += `<tr>
+        <td>${t.topic}</td>
+        <td class="mono">${t.starts}</td>
+        <td><span class="tag ${crTag}">${t.completionRate}%</span></td>
+        <td style="width:30%">
+          <div class="bar"><div class="bar-fill purple" style="width:${(t.starts/maxStarts)*100}%"></div></div>
+        </td>
+      </tr>`;
+    });
+    html += '</table>';
+  }
+  html += '</div>';
+
+  // Round-by-Round Analysis
+  const rounds = d.roundAnalysis || [];
+  html += '<div class="panel">';
+  html += '<div class="panel-title">🎯 Round-by-Round Accuracy</div>';
+  if (rounds.length === 0 || rounds.every(r => r.answers === 0)) {
+    html += '<div class="empty-state">No round data yet</div>';
+  } else {
+    html += '<div class="round-flow">';
+    rounds.forEach(r => {
+      const color = r.accuracy >= 70 ? 'var(--green)' : r.accuracy >= 45 ? 'var(--yellow)' : 'var(--red)';
+      const h = Math.max(r.accuracy, 5);
+      html += `
+        <div class="round-bar">
+          <div class="r-value">${r.accuracy}%</div>
+          <div class="fill" style="height:${h}%;background:${color}"></div>
+          <div class="r-label">R${r.round}</div>
+        </div>`;
+    });
+    html += '</div>';
+    html += '<div style="margin-top:16px">';
+    html += '<table><tr><th>Round</th><th>Accuracy</th><th>Avg Speed</th><th>Answers</th></tr>';
+    rounds.forEach(r => {
+      if (r.answers > 0) {
+        html += `<tr>
+          <td class="mono">Round ${r.round}${r.round === 7 ? ' <span class="tag tag-blue">2x</span>' : ''}</td>
+          <td class="mono">${r.accuracy}%</td>
+          <td class="mono">${r.avgSpeed}s</td>
+          <td class="mono">${r.answers}</td>
+        </tr>`;
+      }
+    });
+    html += '</table></div>';
+  }
+  html += '</div>';
+
+  html += '</div>'; // end panels
+
+  // ─── QUESTION FLAGS ───────────────────────────────────
+  const easy = d.tooEasyQuestions || [];
+  const hard = d.tooHardQuestions || [];
+  if (easy.length > 0 || hard.length > 0) {
+    html += '<div class="section-label">🏳️ Flagged Questions</div>';
+    html += '<div class="panels">';
+
+    if (easy.length > 0) {
+      html += '<div class="panel">';
+      html += '<div class="panel-title">😴 Too Easy (>90% accuracy)</div>';
+      html += '<table><tr><th>Question</th><th>Topic</th><th>Accuracy</th></tr>';
+      easy.forEach(q => {
+        html += `<tr>
+          <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.question || '—'}</td>
+          <td><span class="tag tag-blue">${q.topic}</span></td>
+          <td class="mono"><span class="tag tag-green">${q.accuracy}%</span></td>
+        </tr>`;
+      });
+      html += '</table></div>';
+    }
+
+    if (hard.length > 0) {
+      html += '<div class="panel">';
+      html += '<div class="panel-title">🧱 Too Hard (<30% accuracy)</div>';
+      html += '<table><tr><th>Question</th><th>Topic</th><th>Accuracy</th></tr>';
+      hard.forEach(q => {
+        html += `<tr>
+          <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.question || '—'}</td>
+          <td><span class="tag tag-blue">${q.topic}</span></td>
+          <td class="mono"><span class="tag tag-red">${q.accuracy}%</span></td>
+        </tr>`;
+      });
+      html += '</table></div>';
+    }
+
+    html += '</div>';
+  }
+
+  // ─── PLAYER MODE SPLIT + HOURLY ACTIVITY ──────────────
+  html += '<div class="section-label">🕐 Patterns</div>';
+  html += '<div class="panels">';
+
+  // Bot difficulty split
+  const botDiff = d.botDifficulty || {};
+  const diffEntries = Object.entries(botDiff);
+  html += '<div class="panel">';
+  html += '<div class="panel-title">🤖 Bot Difficulty Split</div>';
+  if (diffEntries.length === 0) {
+    html += '<div class="empty-state">No bot difficulty data yet</div>';
+  } else {
+    const totalBotDiff = diffEntries.reduce((a, [, v]) => a + v, 0);
+    const diffColors = { rookie: 'green', contender: 'yellow', beast: 'red' };
+    const diffEmojis = { rookie: '🐣', contender: '🥊', beast: '🔥' };
+    html += '<table><tr><th>Difficulty</th><th>Games</th><th></th></tr>';
+    diffEntries.sort((a, b) => b[1] - a[1]).forEach(([diff, count]) => {
+      const pct = Math.round((count / totalBotDiff) * 100);
+      html += `<tr>
+        <td>${diffEmojis[diff] || ''} ${diff}</td>
+        <td class="mono">${count} (${pct}%)</td>
+        <td style="width:40%">
+          <div class="bar"><div class="bar-fill ${diffColors[diff] || 'purple'}" style="width:${pct}%"></div></div>
+        </td>
+      </tr>`;
+    });
+    html += '</table>';
+  }
+  html += '</div>';
+
+  // Hourly activity
+  const hourly = d.hourlyActivity || {};
+  const hourEntries = Object.entries(hourly).map(([h, c]) => [parseInt(h), c]).sort((a, b) => a[0] - b[0]);
+  html += '<div class="panel">';
+  html += '<div class="panel-title">⏰ Peak Hours (IST)</div>';
+  if (hourEntries.length === 0) {
+    html += '<div class="empty-state">No hourly data yet</div>';
+  } else {
+    const maxHour = Math.max(...hourEntries.map(e => e[1]), 1);
+    html += '<div class="round-flow" style="height:60px">';
+    for (let h = 0; h < 24; h++) {
+      const count = hourly[h] || 0;
+      const pct = (count / maxHour) * 100;
+      const isIST = true; // already IST from server
+      html += `
+        <div class="round-bar">
+          ${count > 0 ? `<div class="r-value" style="font-size:9px">${count}</div>` : ''}
+          <div class="fill" style="height:${Math.max(pct, 2)}%;background:${count > 0 ? 'var(--accent)' : 'var(--surface2)'}"></div>
+          <div class="r-label" style="font-size:8px">${h % 3 === 0 ? h + 'h' : ''}</div>
+        </div>`;
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  html += '</div>'; // end panels
+
+  // ─── RAW EVENT COUNTS ─────────────────────────────────
+  const eventCounts = d.eventCounts || {};
+  const eventEntries = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]);
+  if (eventEntries.length > 0) {
+    html += '<div class="section-label">📋 All Events</div>';
+    html += '<div class="panel full-width" style="margin-bottom:24px">';
+    html += '<table><tr><th>Event</th><th>Count</th></tr>';
+    eventEntries.forEach(([event, count]) => {
+      html += `<tr><td style="font-family:JetBrains Mono,monospace;font-size:12px">${event}</td><td class="mono">${count}</td></tr>`;
+    });
+    html += '</table></div>';
+  }
+
+  c.innerHTML = html;
+}
+
+function miniStat(val, label) {
+  return `<div class="mini-stat"><div class="val">${val}</div><div class="lbl">${label}</div></div>`;
+}
+
+// ─── SURVEYS ────────────────────────────────────────────
+async function loadSurveys() {
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-survey').classList.add('active');
+  document.getElementById('content').style.display = 'none';
+  const sc = document.getElementById('survey-content');
+  sc.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/admin/surveys');
+    const d = await res.json();
+    renderSurveys(d);
+  } catch (e) {
+    sc.innerHTML = '<div class="loading">Failed to load surveys.</div>';
+  }
+}
+
+function renderSurveys(d) {
+  const sc = document.getElementById('survey-content');
+  let html = '';
+
+  html += '<div class="section-label">📋 Topic Interest Survey</div>';
+
+  if (!d.totalResponses || d.totalResponses === 0) {
+    html += '<div class="panel full-width"><div class="empty-state"><div class="big">📋</div>No survey responses yet.<br>Surveys appear after players complete games.</div></div>';
+    sc.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="panel full-width" style="margin-bottom:12px">
+    <div class="panel-title">Weighted Topic Rankings</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">${d.totalResponses} responses · Priority #1 = 10pts, #2 = 9pts, etc.</p>`;
+
+  const rankings = d.topicRanking || [];
+  if (rankings.length > 0) {
+    const maxScore = rankings[0][1];
+    html += '<table><tr><th>#</th><th>Topic</th><th>Score</th><th></th></tr>';
+    rankings.forEach(([topic, score], i) => {
+      html += `<tr>
+        <td class="mono">${i + 1}</td>
+        <td>${topic}</td>
+        <td class="mono">${score}</td>
+        <td style="width:40%">
+          <div class="bar"><div class="bar-fill purple" style="width:${(score/maxScore)*100}%"></div></div>
+        </td>
+      </tr>`;
+    });
+    html += '</table>';
+  }
+  html += '</div>';
+
+  const freeText = d.freeTextSuggestions || [];
+  if (freeText.length > 0) {
+    html += '<div class="panel full-width">';
+    html += '<div class="panel-title">💬 Free Text Suggestions</div>';
+    freeText.forEach(ft => {
+      html += `<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span style="color:var(--text)">"${ft.text}"</span>
+        <span style="color:var(--text3);font-size:11px;margin-left:8px">— ${ft.player || 'Anonymous'}</span>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  sc.innerHTML = html;
+}
+
+// Initial load
+loadStats(30);
+</script>
+</body>
+</html>
